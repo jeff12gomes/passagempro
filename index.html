@@ -20,8 +20,26 @@
     .stage-canvas {
       height: auto;
       aspect-ratio: 4 / 3;
-      min-height: 260px;
-      max-height: 560px;
+      background: #1e293b;
+    }
+    .stage-floor {
+      position: absolute;
+      border: 2px solid #020617;
+      box-sizing: border-box;
+      background-color: #ffffff;
+      background-image:
+        linear-gradient(to right, #e2e8f0 1px, transparent 1px),
+        linear-gradient(to bottom, #e2e8f0 1px, transparent 1px);
+      pointer-events: none;
+    }
+    .stage-margin-label {
+      position: absolute;
+      color: #cbd5e1;
+      font: 700 8px 'Inter', sans-serif;
+      letter-spacing: 0.04em;
+      text-align: center;
+      pointer-events: none;
+      white-space: nowrap;
     }
     .stage-item {
       touch-action: none;
@@ -226,6 +244,18 @@
             <label for="drumDepthM" class="block text-xs text-slate-400 mb-1">Profundidade da Bateria (m)</label>
             <input type="number" id="drumDepthM" min="1.2" max="5" step="0.1" value="2" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
           </div>
+          <div class="flex flex-wrap items-end gap-2 rounded-lg border border-slate-700 bg-slate-950/60 p-2">
+            <span class="w-full text-[10px] font-bold uppercase tracking-wider text-slate-400">Tela (LED / Projeção)</span>
+            <div class="w-28">
+              <label for="screenWidthM" class="block text-xs text-slate-400 mb-1">Largura (m)</label>
+              <input type="number" id="screenWidthM" min="1" max="20" step="0.5" value="3.0" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+            </div>
+            <div class="w-28">
+              <label for="screenDepthM" class="block text-xs text-slate-400 mb-1">Estrutura (m)</label>
+              <input type="number" id="screenDepthM" min="0.2" max="4" step="0.1" value="0.5" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+            </div>
+            <button onclick="applyScreenDimensions()" class="px-3 py-2 text-xs font-bold rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition">Aplicar</button>
+          </div>
           <button onclick="applyStageDimensions()" class="px-4 py-2 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 transition">
             Aplicar Medidas
           </button>
@@ -257,6 +287,7 @@
           <button onclick="addStageItem('monitor-l', 'Monitor L', false)" class="px-3 py-1.5 text-xs font-medium bg-cyan-950/60 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 rounded-lg border border-cyan-800 transition">+ Monitor L</button>
           <button onclick="addStageItem('monitor-r', 'Monitor R', false)" class="px-3 py-1.5 text-xs font-medium bg-cyan-950/60 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 rounded-lg border border-cyan-800 transition">+ Monitor R</button>
           <button onclick="addStageItem('ac', 'Ponto AC', false)" class="px-3 py-1.5 text-xs font-medium bg-emerald-950/60 hover:bg-emerald-500 hover:text-slate-950 text-emerald-300 rounded-lg border border-emerald-800 transition">+ Ponto AC</button>
+          <button onclick="addStageItem('screen', 'Tela LED', false)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 📺 Tela / LED</button>
         </div>
       </div>
 
@@ -266,7 +297,7 @@
           <span>Fundo do Palco (Backline)</span>
           <span>Vista Superior (Frente para o Público)</span>
         </div>
-        <div id="stageCanvas" class="stage-grid stage-canvas relative w-full rounded-xl border-2 border-slate-700 overflow-hidden">
+        <div id="stageCanvas" class="stage-canvas relative w-full rounded-xl border-2 border-slate-700 overflow-hidden">
           <!-- Itens arrastáveis entram aqui -->
         </div>
         <div class="mt-2 bg-amber-500/10 border border-amber-500/30 rounded-lg py-1.5 text-center text-xs font-bold uppercase tracking-widest text-amber-400">
@@ -649,6 +680,8 @@
       stageDepthM: 6,
       drumWidthM: 2,
       drumDepthM: 2,
+      screenWidthM: 3,
+      screenDepthM: 0.5,
       stageItems: [],
       inputs: [],
       monitors: [
@@ -659,12 +692,18 @@
       pa: { audience: 300, depth: 22, width: 14, env: 'indoor_reverb', style: 'band' }
     };
 
-    const stageDimensionDefaults = { stageWidthM: 8, stageDepthM: 6, drumWidthM: 2, drumDepthM: 2 };
+    const STAGE_MARGIN_M = 1.5;
+    const stageDimensionDefaults = {
+      stageWidthM: 8, stageDepthM: 6, drumWidthM: 2, drumDepthM: 2,
+      screenWidthM: 3, screenDepthM: 0.5
+    };
     const stageDimensionBounds = {
       stageWidthM: [3, 40, 0.5],
       stageDepthM: [2, 30, 0.5],
       drumWidthM: [1.2, 5, 0.1],
-      drumDepthM: [1.2, 5, 0.1]
+      drumDepthM: [1.2, 5, 0.1],
+      screenWidthM: [1, 20, 0.5],
+      screenDepthM: [0.2, 4, 0.1]
     };
     let selectedStageItemId = null;
 
@@ -703,15 +742,42 @@
       return (Array.isArray(items) ? items : []).map(item => {
         if (!item || typeof item !== 'object') return item;
         const oldType = String(item.type || '');
-        const type = stageItemImages[oldType] ? oldType : stageItemAliases[oldType] || 'di';
+        const type = oldType === 'screen' || stageItemImages[oldType]
+          ? oldType
+          : stageItemAliases[oldType] || 'di';
         const label = String(item.label || '').trim();
         const displayLabel = getStageItemLabel({ type: oldType, label });
         const useDefaultLabel = !label || (
           stageItemAliases[oldType] &&
           legacyStageLabels[oldType]?.includes(displayLabel)
-        );
-        return { ...item, type, label: useDefaultLabel ? stageItemImages[type].label : label };
+        ) || (type === 'screen' && label === 'Tela LED');
+        return { ...item, type, label: useDefaultLabel ? getDefaultStageItemLabel(type) : label };
       });
+    }
+
+    function getDefaultStageItemLabel(type) {
+      if (type === 'screen') {
+        return `Tela LED (${state.screenWidthM.toFixed(1)}m x ${state.screenDepthM.toFixed(1)}m)`;
+      }
+      return stageItemImages[type]?.label || stageItemImages.di.label;
+    }
+
+    function getTotalStageDimensions() {
+      return {
+        width: state.stageWidthM + 2 * STAGE_MARGIN_M,
+        depth: state.stageDepthM + 2 * STAGE_MARGIN_M
+      };
+    }
+
+    function getScreenStageSvg(patternId = 'screen-hatch') {
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true">
+        <defs><pattern id="${patternId}" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <path d="M0 0V8" stroke="#64748b" stroke-width="2"/>
+        </pattern></defs>
+        <rect x="1" y="1" width="198" height="38" fill="#fff" stroke="#020617" stroke-width="2"/>
+        <rect x="4" y="4" width="192" height="23" fill="url(#${patternId})" stroke="#020617" stroke-width="1"/>
+        <path d="M2 32H198M2 36H198" stroke="#020617" stroke-width="2"/>
+      </svg>`;
     }
 
     function escapeHTML(value) {
@@ -794,8 +860,8 @@
         addStageItem('vocal', 'Voz Lead', true, 50, 72);
         addStageItem('monitor-l', 'Mon 1', false, 50, 84);
       }
-      state.stageItems = normalizeStageItems(state.stageItems);
       Object.assign(state, normalizeStageDimensions(state));
+      state.stageItems = normalizeStageItems(state.stageItems);
       syncFormFromState();
       updateStageCanvasDimensions();
       renderStage();
@@ -829,6 +895,8 @@
       document.getElementById('stageDepthM').value = state.stageDepthM;
       document.getElementById('drumWidthM').value = state.drumWidthM;
       document.getElementById('drumDepthM').value = state.drumDepthM;
+      document.getElementById('screenWidthM').value = state.screenWidthM;
+      document.getElementById('screenDepthM').value = state.screenDepthM;
       document.getElementById('paAudience').value = state.pa.audience;
       document.getElementById('paDepth').value = state.pa.depth;
       document.getElementById('paWidth').value = state.pa.width;
@@ -861,7 +929,7 @@
 
     // MÓDULO 2: MAPA DE PALCO
     function applyStageDimensions() {
-      const inputs = ['stageWidthM', 'stageDepthM', 'drumWidthM', 'drumDepthM']
+      const inputs = ['stageWidthM', 'stageDepthM', 'drumWidthM', 'drumDepthM', 'screenWidthM', 'screenDepthM']
         .map(id => document.getElementById(id));
       const invalidInput = inputs.find(input => !input.checkValidity());
       if (invalidInput) {
@@ -869,25 +937,52 @@
         return;
       }
 
+      const previousScreenLabel = getDefaultStageItemLabel('screen');
       Object.assign(state, normalizeStageDimensions(Object.fromEntries(
         inputs.map(input => [input.id, Number(input.value)])
       )));
+      updateDefaultScreenLabels(previousScreenLabel);
       updateStageCanvasDimensions();
       renderStage();
       saveState();
     }
 
+    function applyScreenDimensions() {
+      const inputs = ['screenWidthM', 'screenDepthM'].map(id => document.getElementById(id));
+      const invalidInput = inputs.find(input => !input.checkValidity());
+      if (invalidInput) {
+        invalidInput.reportValidity();
+        return;
+      }
+
+      const previousScreenLabel = getDefaultStageItemLabel('screen');
+      Object.assign(state, normalizeStageDimensions(Object.fromEntries(
+        inputs.map(input => [input.id, Number(input.value)])
+      )));
+      updateDefaultScreenLabels(previousScreenLabel);
+      renderStage();
+      saveState();
+    }
+
+    function updateDefaultScreenLabels(previousLabel) {
+      state.stageItems.forEach(item => {
+        if (item.type === 'screen' && item.label === previousLabel) {
+          item.label = getDefaultStageItemLabel('screen');
+        }
+      });
+    }
+
     function updateStageCanvasDimensions() {
       const canvas = document.getElementById('stageCanvas');
-      canvas.style.aspectRatio = `${state.stageWidthM} / ${state.stageDepthM}`;
-      canvas.style.backgroundSize = `${100 / state.stageWidthM}% ${100 / state.stageDepthM}%`;
+      const total = getTotalStageDimensions();
+      canvas.style.aspectRatio = `${total.width} / ${total.depth}`;
     }
 
     function addStageItem(type, label, populateInputs, xPct = null, yPct = null) {
       const id = 'item_' + Date.now() + Math.random().toString(36).slice(2, 6);
       const x = xPct !== null ? xPct : 30 + Math.floor(Math.random() * 40);
       const y = yPct !== null ? yPct : 30 + Math.floor(Math.random() * 40);
-      state.stageItems.push({ id, type, label, x, y });
+      state.stageItems.push({ id, type, label: type === 'screen' && label === 'Tela LED' ? getDefaultStageItemLabel(type) : label, x, y });
 
       const presetType = stageItemPresetTypes[type];
       if (populateInputs && presetType && instrumentPresets[presetType]) {
@@ -918,23 +1013,51 @@
           selectedStageItemId = null;
         }
       };
-      const widthLabel = document.createElement('div');
-      widthLabel.className = 'absolute top-1 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-300 bg-slate-950/75 px-1.5 py-0.5 rounded pointer-events-none z-10';
-      widthLabel.textContent = `Largura: ${state.stageWidthM} m`;
-      canvas.appendChild(widthLabel);
-      const depthLabel = document.createElement('div');
-      depthLabel.className = 'absolute left-1 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-300 bg-slate-950/75 px-1 py-1.5 rounded pointer-events-none z-10';
-      depthLabel.style.writingMode = 'vertical-rl';
-      depthLabel.textContent = `Profundidade: ${state.stageDepthM} m`;
-      canvas.appendChild(depthLabel);
+      const total = getTotalStageDimensions();
+      const floor = document.createElement('div');
+      floor.id = 'stageFloor';
+      floor.className = 'stage-floor';
+      floor.style.left = `${(STAGE_MARGIN_M / total.width) * 100}%`;
+      floor.style.top = `${(STAGE_MARGIN_M / total.depth) * 100}%`;
+      floor.style.width = `${(state.stageWidthM / total.width) * 100}%`;
+      floor.style.height = `${(state.stageDepthM / total.depth) * 100}%`;
+      floor.style.backgroundSize = `${100 / state.stageWidthM}% ${100 / state.stageDepthM}%`;
+      const floorCaption = document.createElement('div');
+      floorCaption.className = 'absolute top-1 left-1 z-10 rounded bg-white/90 px-1.5 py-0.5 text-[9px] font-bold text-slate-700';
+      floorCaption.textContent = `ÁREA ÚTIL DO PALCO: ${state.stageWidthM.toFixed(1)}m × ${state.stageDepthM.toFixed(1)}m`;
+      floor.appendChild(floorCaption);
+      canvas.appendChild(floor);
+
+      [
+        { top: '1%', left: '50%', transform: 'translateX(-50%)' },
+        { top: '50%', left: '1%', transform: 'translateY(-50%)', rotate: true },
+        { top: '50%', right: '1%', transform: 'translateY(-50%)', rotate: true },
+        { bottom: '1%', left: '50%', transform: 'translateX(-50%)' }
+      ].forEach(position => {
+        const label = document.createElement('div');
+        label.className = 'stage-margin-label';
+        if (position.top) label.style.top = position.top;
+        if (position.bottom) label.style.bottom = position.bottom;
+        if (position.left) label.style.left = position.left;
+        if (position.right) label.style.right = position.right;
+        label.style.transform = position.transform;
+        if (position.rotate) label.style.writingMode = 'vertical-rl';
+        label.textContent = 'MARGEM / COXIA (1,5m)';
+        canvas.appendChild(label);
+      });
+
+      let screenIndex = 0;
       state.stageItems.forEach(item => {
         const el = document.createElement('div');
         el.className = `stage-item absolute -translate-x-1/2 -translate-y-1/2 cursor-grab${selectedStageItemId === item.id ? ' selected' : ''}`;
         el.style.left = item.x + '%';
         el.style.top = item.y + '%';
         if (item.type === 'bateria') {
-          el.style.width = `${(state.drumWidthM / state.stageWidthM) * 100}%`;
-          el.style.height = `${(state.drumDepthM / state.stageDepthM) * 100}%`;
+          el.style.width = `${(state.drumWidthM / total.width) * 100}%`;
+          el.style.height = `${(state.drumDepthM / total.depth) * 100}%`;
+        } else if (item.type === 'screen') {
+          el.style.width = `${(state.screenWidthM / total.width) * 100}%`;
+          el.style.height = `${(state.screenDepthM / total.depth) * 100}%`;
         } else {
           el.style.width = '108px';
           el.style.height = '76px';
@@ -943,11 +1066,16 @@
         const icon = document.createElement('div');
         icon.className = `stage-item-icon w-full h-full${item.type === 'bateria' ? ' drum' : ''}`;
         icon.style.transform = `rotate(${Number(item.rotation) || 0}deg)`;
-        const image = document.createElement('img');
-        image.src = stageItemImages[item.type]?.src || stageItemImages.di.src;
-        image.alt = '';
-        image.draggable = false;
-        icon.appendChild(image);
+        if (item.type === 'screen') {
+          icon.classList.add('bg-white');
+          icon.innerHTML = getScreenStageSvg(`screen-hatch-${screenIndex++}`);
+        } else {
+          const image = document.createElement('img');
+          image.src = stageItemImages[item.type]?.src || stageItemImages.di.src;
+          image.alt = '';
+          image.draggable = false;
+          icon.appendChild(image);
+        }
         el.appendChild(icon);
 
         const label = document.createElement('input');
@@ -999,8 +1127,8 @@
           const onMove = (ev) => {
             let nx = ((ev.clientX - rect.left) / rect.width) * 100;
             let ny = ((ev.clientY - rect.top) / rect.height) * 100;
-            nx = Math.max(6, Math.min(94, nx));
-            ny = Math.max(8, Math.min(92, ny));
+            nx = Math.max(1, Math.min(99, nx));
+            ny = Math.max(1, Math.min(99, ny));
             item.x = Math.round(nx * 10) / 10;
             item.y = Math.round(ny * 10) / 10;
             el.style.left = item.x + '%';
@@ -1269,19 +1397,28 @@
       const container = document.getElementById('pdf-container');
       container.classList.remove('hidden');
 
-      const stageAspectRatio = state.stageWidthM / state.stageDepthM;
+      const total = getTotalStageDimensions();
+      const stageAspectRatio = total.width / total.depth;
       const pdfStageHeight = Math.min(360, 700 / stageAspectRatio);
       const pdfStageWidth = pdfStageHeight * stageAspectRatio;
-      const stageItemsHTML = state.stageItems.map(item => {
+      const stageItemsHTML = state.stageItems.map((item, index) => {
         const isDrums = item.type === 'bateria';
-        const itemWidth = isDrums ? `${(state.drumWidthM / state.stageWidthM) * 100}%` : '82px';
-        const itemHeight = isDrums ? `${(state.drumDepthM / state.stageDepthM) * 100}%` : '68px';
+        const isScreen = item.type === 'screen';
+        const itemWidth = isDrums
+          ? `${(state.drumWidthM / total.width) * 100}%`
+          : isScreen ? `${(state.screenWidthM / total.width) * 100}%` : '82px';
+        const itemHeight = isDrums
+          ? `${(state.drumDepthM / total.depth) * 100}%`
+          : isScreen ? `${(state.screenDepthM / total.depth) * 100}%` : '68px';
         const imagePath = stageItemImages[item.type]?.src || stageItemImages.di.src;
         const drumBorder = isDrums ? 'border:1px dashed #475569; box-sizing:border-box;' : '';
+        const itemDrawing = isScreen
+          ? getScreenStageSvg(`pdf-screen-hatch-${index}`)
+          : `<img src="${imagePath}" alt="" style="display:block; width:100%; height:100%; object-fit:contain;" />`;
         return `
         <div style="position:absolute; left:${item.x}%; top:${item.y}%; transform:translate(-50%,-50%); width:${itemWidth}; height:${itemHeight}; z-index:2;">
           <div style="width:100%; height:100%; background:#ffffff; border-radius:4px; ${drumBorder} transform:rotate(${Number(item.rotation) || 0}deg);">
-            <img src="${imagePath}" alt="" style="display:block; width:100%; height:100%; object-fit:contain;" />
+            ${itemDrawing}
           </div>
           <div style="position:absolute; top:calc(100% + 1px); left:50%; transform:translateX(-50%); white-space:nowrap; padding:1px 3px; background:#ffffff; color:#0f172a; font-size:9px; font-weight:700; text-align:center;">${escapeHTML(getStageItemLabel(item))}</div>
           ${item.sub ? `<div style="position:absolute; top:calc(100% + 13px); left:50%; transform:translateX(-50%); white-space:nowrap; padding:1px 3px; background:#ffffff; color:#475569; font-size:8px; text-align:center;">${escapeHTML(item.sub)}</div>` : ''}
@@ -1329,14 +1466,16 @@
 
           <!-- MAPA DE PALCO -->
           <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; color:#0f172a;">1. Mapa de Palco (Stage Plot — Vista Superior)</div>
-          <div style="position:relative; width:${pdfStageWidth}px; max-width:100%; height:auto; aspect-ratio:${stageAspectRatio}; box-sizing:border-box; border:2px solid #0f172a; border-radius:8px; background:#ffffff; overflow:hidden; margin:0 auto 10px; page-break-inside:avoid;">
-            <div style="position:absolute; top:4px; left:50%; transform:translateX(-50%); font-size:9px; color:#64748b; font-weight:700; white-space:nowrap;">Largura: ${state.stageWidthM} m</div>
-            <div style="position:absolute; top:6px; right:6px; font-size:8px; color:#94a3b8; font-weight:700;">FUNDO DO PALCO</div>
-            <div style="position:absolute; top:50%; left:2px; transform:translateY(-50%); writing-mode:vertical-rl; font-size:9px; color:#64748b; font-weight:700; white-space:nowrap;">Profundidade: ${state.stageDepthM} m</div>
-            ${stageItemsHTML}
-            <div style="position:absolute; bottom:0; left:0; right:0; background:#0f172a; color:#ffffff; text-align:center; font-size:9px; font-weight:700; padding:3px 0; letter-spacing:1px;">
-              ▲ FRENTE DO PALCO / PÚBLICO / P.A. ▲
+          <div style="position:relative; width:${pdfStageWidth}px; max-width:100%; height:auto; aspect-ratio:${stageAspectRatio}; box-sizing:border-box; border:2px solid #0f172a; background:#1e293b; overflow:hidden; margin:0 auto 10px; page-break-inside:avoid;">
+            <div style="position:absolute; left:${(STAGE_MARGIN_M / total.width) * 100}%; top:${(STAGE_MARGIN_M / total.depth) * 100}%; width:${(state.stageWidthM / total.width) * 100}%; height:${(state.stageDepthM / total.depth) * 100}%; box-sizing:border-box; border:2px solid #020617; background-color:#ffffff; background-image:linear-gradient(to right,#e2e8f0 1px,transparent 1px),linear-gradient(to bottom,#e2e8f0 1px,transparent 1px); background-size:${100 / state.stageWidthM}% ${100 / state.stageDepthM}%; z-index:0;">
+              <div style="position:absolute; top:3px; left:4px; font-size:8px; color:#334155; font-weight:700; background:rgba(255,255,255,.9); padding:1px 3px;">ÁREA ÚTIL DO PALCO: ${state.stageWidthM.toFixed(1)}m × ${state.stageDepthM.toFixed(1)}m</div>
             </div>
+            <div style="position:absolute; top:1%; left:50%; transform:translateX(-50%); color:#cbd5e1; font-size:7px; font-weight:700; white-space:nowrap;">MARGEM / COXIA (1,5m)</div>
+            <div style="position:absolute; bottom:1%; left:50%; transform:translateX(-50%); color:#cbd5e1; font-size:7px; font-weight:700; white-space:nowrap;">MARGEM / COXIA (1,5m)</div>
+            <div style="position:absolute; top:50%; left:1%; transform:translateY(-50%); writing-mode:vertical-rl; color:#cbd5e1; font-size:7px; font-weight:700; white-space:nowrap;">MARGEM / COXIA (1,5m)</div>
+            <div style="position:absolute; top:50%; right:1%; transform:translateY(-50%); writing-mode:vertical-rl; color:#cbd5e1; font-size:7px; font-weight:700; white-space:nowrap;">MARGEM / COXIA (1,5m)</div>
+            ${stageItemsHTML}
+            <div style="position:absolute; bottom:1%; left:50%; transform:translateX(-50%); color:#cbd5e1; font-size:7px; font-weight:700; white-space:nowrap;">FRENTE / PÚBLICO</div>
           </div>
 
           <!-- ELÉTRICA & OBSERVAÇÕES -->
