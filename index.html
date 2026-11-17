@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PassagemPro — Rider Técnico, Mapa de Palco & Cálculo de PA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #f1f5f9; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .stage-grid {
+      background-color: #111827;
+      background-image: 
+        linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .stage-item {
+      touch-action: none;
+      user-select: none;
+      transition: box-shadow 0.15s ease, transform 0.05s ease;
+    }
+    .stage-item:active { cursor: grabbing; z-index: 50; }
+    /* Ocultar controles na exportação PDF */
+    .pdf-mode .no-pdf { display: none !important; }
+    .pdf-mode { background: #ffffff !important; color: #0f172a !important; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOPBAR -->
+  <header class="bg-slate-900/95 border-b border-slate-800 sticky top-0 z-40 backdrop-blur">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-extrabold text-lg shadow-lg shadow-amber-500/20">
+          P
+        </div>
+        <div>
+          <h1 class="font-extrabold text-lg tracking-tight text-white leading-none">Passagem<span class="text-amber-400">Pro</span></h1>
+          <p class="text-[11px] text-slate-400 mt-0.5">Seu show resolvido antes de ligar o PA.</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="exportJSON()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+          Salvar .JSON
+        </button>
+        <label class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer">
+          Carregar .JSON
+          <input type="file" id="importFile" accept=".json" class="hidden" onchange="importJSON(event)" />
+        </label>
+        <button onclick="resetAll()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-950/60 hover:bg-rose-900/70 text-rose-300 border border-rose-800/60 transition">
+          Limpar
+        </button>
+        <button onclick="generatePDF()" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20 transition flex items-center gap-1.5">
+          <span>⬇ Baixar Rider PDF (A4)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- NAVEGAÇÃO POR ABAS -->
+    <nav class="max-w-7xl mx-auto px-4 flex gap-1 overflow-x-auto border-t border-slate-800/80">
+      <button onclick="switchTab('geral')" id="tab-geral" class="tab-btn px-4 py-2.5 text-xs font-semibold border-b-2 border-amber-400 text-amber-400 whitespace-nowrap">
+        1. Dados & Elétrica
+      </button>
+      <button onclick="switchTab('palco')" id="tab-palco" class="tab-btn px-4 py-2.5 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
+        2. Mapa de Palco
+      </button>
+      <button onclick="switchTab('input')" id="tab-input" class="tab-btn px-4 py-2.5 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
+        3. Input List & Monitores (<span id="channelCount">0</span>)
+      </button>
+      <button onclick="switchTab('pa')" id="tab-pa" class="tab-btn px-4 py-2.5 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">
+        4. Cálculo & Alinhamento de PA
+      </button>
+    </nav>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="max-w-7xl w-full mx-auto px-4 py-6 flex-1">
+
+    <!-- ABA 1: DADOS GERAIS & ELÉTRICA -->
+    <section id="sec-geral" class="tab-section space-y-6">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-amber-400">Identificação do Artista / Evento</h2>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Nome da Banda, Artista ou Igreja</label>
+            <input type="text" id="artistName" oninput="saveState()" placeholder="Ex: Banda Horizonte / Ministério de Louvor" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Estilo / Formação</label>
+              <input type="text" id="showFormat" oninput="saveState()" placeholder="Ex: Pop Rock / Banda Completa" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Data / Local do Evento</label>
+              <input type="text" id="eventInfo" oninput="saveState()" placeholder="Ex: Festival de Verão - Curitiba/PR" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Técnico Responsável / Roadie</label>
+              <input type="text" id="techName" oninput="saveState()" placeholder="Nome do técnico" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">WhatsApp Técnico</label>
+              <input type="text" id="techPhone" oninput="saveState()" placeholder="(00) 90000-0000" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Logotipo (PNG/JPG opcional para o cabeçalho do PDF)</label>
+            <input type="file" id="logoInput" accept="image/*" onchange="handleLogoUpload(event)" class="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700" />
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-cyan-400">Requisitos de Palco, Console & AC</h2>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Tensão AC no Palco</label>
+              <select id="acVoltage" onchange="saveState()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">
+                <option value="127V Estabilizado e Aterrado">127V Estabilizado e Aterrado</option>
+                <option value="220V Estabilizado e Aterrado">220V Estabilizado e Aterrado</option>
+                <option value="127V e 220V identificados">127V e 220V identificados</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Console Mínimo Sugerido</label>
+              <input type="text" id="consoleReq" oninput="saveState()" value="Digital 32 canais (X32, M32, SQ5 ou similar)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Observações Técnicas de Palco & Passage de Som</label>
+            <textarea id="stageNotes" oninput="saveState()" rows="5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none">• Energia exclusiva para áudio (separada da iluminação/dimmers) com aterramento real.
+• Praticável de bateria 2,00m x 2,00m acarpetado (quando aplicável).
+• Todos os pedestais devem possuir cachimbos/garras em perfeito estado.</textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 2: MAPA DE PALCO INTERATIVO -->
+    <section id="sec-palco" class="tab-section hidden space-y-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-amber-400">Biblioteca de Palco (Clique para adicionar)</h2>
+            <p class="text-xs text-slate-400">Arraste os itens no palco. Adicionar instrumentos popula o Input List automaticamente.</p>
+          </div>
+          <button onclick="clearStage()" class="px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+            Limpar Palco
+          </button>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button onclick="addStageItem('drums', '🥁 Bateria', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🥁 Bateria (8 ch)</button>
+          <button onclick="addStageItem('perc', '🪘 Percussão', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🪘 Percussão (3 ch)</button>
+          <button onclick="addStageItem('bass', '🎸 Baixo', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🎸 Baixo (2 ch)</button>
+          <button onclick="addStageItem('gtr', '⚡ Guitarra', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ ⚡ Guitarra (1 ch)</button>
+          <button onclick="addStageItem('acoustic', '🪕 Violão', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🪕 Violão DI (1 ch)</button>
+          <button onclick="addStageItem('keys', '🎹 Teclado L/R', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🎹 Teclado (2 ch)</button>
+          <button onclick="addStageItem('vs', '💻 VS / Click', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 💻 VS / Click (3 ch)</button>
+          <button onclick="addStageItem('vocal', '🎤 Voz', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🎤 Voz (1 ch)</button>
+          <button onclick="addStageItem('wedge', '🔊 Monitor Chão', false)" class="px-3 py-1.5 text-xs font-medium bg-cyan-950/60 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 rounded-lg border border-cyan-800 transition">+ 🔊 Monitor Chão</button>
+          <button onclick="addStageItem('iem', '🎧 Ponto In-Ear', false)" class="px-3 py-1.5 text-xs font-medium bg-cyan-950/60 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 rounded-lg border border-cyan-800 transition">+ 🎧 Ponto In-Ear</button>
+          <button onclick="addStageItem('ac', '🔌 Ponto AC', false)" class="px-3 py-1.5 text-xs font-medium bg-emerald-950/60 hover:bg-emerald-500 hover:text-slate-950 text-emerald-300 rounded-lg border border-emerald-800 transition">+ 🔌 Ponto AC</button>
+        </div>
+      </div>
+
+      <!-- ÁREA VISUAL DO PALCO -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="flex justify-between items-center text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2 px-2">
+          <span>Fundo do Palco (Backline)</span>
+          <span>Vista Superior (Frente para o Público)</span>
+        </div>
+        <div id="stageCanvas" class="stage-grid relative w-full h-[460px] rounded-xl border-2 border-slate-700 overflow-hidden">
+          <!-- Itens arrastáveis entram aqui -->
+        </div>
+        <div class="mt-2 bg-amber-500/10 border border-amber-500/30 rounded-lg py-1.5 text-center text-xs font-bold uppercase tracking-widest text-amber-400">
+          ▲ FRENTE DO PALCO / PÚBLICO / P.A. ▲
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 3: INPUT LIST & VIAS DE MONITOR -->
+    <section id="sec-input" class="tab-section hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-amber-400">Patch / Input List (Padrão Engenharia de Palco)</h2>
+            <p class="text-xs text-slate-400">Edite qualquer canal, microfone, pedestal ou adicione canais extras manualmente.</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="sortInputList()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700">
+              Ordenar Padrão PA
+            </button>
+            <button onclick="addInputRow()" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950">
+              + Novo Canal
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-700 text-slate-400 uppercase text-[11px]">
+                <th class="py-2.5 px-2 w-12">CH</th>
+                <th class="py-2.5 px-2">Instrumento / Fonte</th>
+                <th class="py-2.5 px-2">Microfone / DI Sugerido</th>
+                <th class="py-2.5 px-2">Pedestal / Garra</th>
+                <th class="py-2.5 px-2 text-center w-16">+48V</th>
+                <th class="py-2.5 px-2">Observação</th>
+                <th class="py-2.5 px-2 text-center w-12">Ação</th>
+              </tr>
+            </thead>
+            <tbody id="inputTableBody" class="divide-y divide-slate-800/80">
+              <!-- Linhas geradas via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- VIAS DE MONITORAÇÃO / AUXILIARES -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-cyan-400">Roteamento de Vias de Monitor / In-Ear (Auxiliares)</h2>
+            <p class="text-xs text-slate-400">Defina quantas vias de retorno a banda exige e o tipo de conexão.</p>
+          </div>
+          <button onclick="addMonitorRow()" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950">
+            + Nova Via
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-700 text-slate-400 uppercase text-[11px]">
+                <th class="py-2 px-2 w-20">Via / Aux</th>
+                <th class="py-2 px-2">Músico / Posição</th>
+                <th class="py-2 px-2">Sistema (Wedge / IEM Fio / IEM Sem Fio)</th>
+                <th class="py-2 px-2">Prioridade de Mix</th>
+                <th class="py-2 px-2 text-center w-12">Ação</th>
+              </tr>
+            </thead>
+            <tbody id="monitorTableBody" class="divide-y divide-slate-800/80"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 4: CALCULADORA DE DIMENSIONAMENTO & ALINHAMENTO DE PA -->
+    <section id="sec-pa" class="tab-section hidden space-y-6">
+      <div class="grid lg:grid-cols-12 gap-6">
+        <!-- PARÂMETROS DE ENTRADA -->
+        <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-amber-400">Parâmetros Acústicos do Evento</h2>
+          
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Público Estimado (pessoas)</label>
+            <input type="number" id="paAudience" value="300" min="20" max="50000" oninput="calculatePA()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Profundidade Público (m)</label>
+              <input type="number" id="paDepth" value="22" min="5" max="150" oninput="calculatePA()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Largura Palco/Área (m)</label>
+              <input type="number" id="paWidth" value="14" min="4" max="100" oninput="calculatePA()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Ambiente Acústico</label>
+            <select id="paEnv" onchange="calculatePA()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none">
+              <option value="indoor_treated">Fechado com Tratamento Acústico (Teatro / Igreja tratada)</option>
+              <option value="indoor_reverb" selected>Fechado Reverberante (Salão / Ginásio / Galpão)</option>
+              <option value="semi_open">Semi-aberto (Tenda / Galpão aberto / Bar)</option>
+              <option value="outdoor">Ar Livre (Praça / Campo / Festival - Campo Livre)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Aplicação / Dinâmica Musical (Fator de Crista)</label>
+            <select id="paStyle" onchange="calculatePA()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none">
+              <option value="speech">Palestra / Teatro / Culto Falado (Alvo: 92 dB SPL)</option>
+              <option value="acoustic">Acústico / MPB / Jazz (Alvo: 96 dB SPL)</option>
+              <option value="band" selected>Banda ao Vivo / Pop / Rock / Sertanejo (Alvo: 102 dB SPL)</option>
+              <option value="dj">DJ / Eletrônico / Graves Pesados (Alvo: 106 dB SPL)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- DIAGNÓSTICO DE ENGENHARIA DE PA -->
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-cyan-400">Relatório de Engenharia & Alinhamento de PA</h2>
+            <span class="text-[11px] mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">v = 343 m/s (20°C)</span>
+          </div>
+
+          <!-- KPIs -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+              <span class="text-[11px] text-slate-400 block">SPL Alvo (House Mix)</span>
+              <span id="outSplTarget" class="text-xl font-extrabold text-amber-400 mono">102 dB</span>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+              <span class="text-[11px] text-slate-400 block">SPL Máx. a 1m (Pico)</span>
+              <span id="outSpl1m" class="text-xl font-extrabold text-white mono">128 dB</span>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+              <span class="text-[11px] text-slate-400 block">Potência RMS Total</span>
+              <span id="outRmsTotal" class="text-xl font-extrabold text-cyan-400 mono">4.800 W</span>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+              <span class="text-[11px] text-slate-400 block">Potência Programa</span>
+              <span id="outProgTotal" class="text-xl font-extrabold text-emerald-400 mono">9.600 W</span>
+            </div>
+          </div>
+
+          <!-- DIVISÃO SUBS vs ALTAS -->
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-4">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-xs font-bold text-amber-400">VIAS DE SUBGRAVES (LOW)</span>
+                <span id="outSubRatio" class="text-xs mono text-slate-400">60%</span>
+              </div>
+              <p id="outSubWatts" class="text-lg font-bold text-white mono">2.880 W RMS</p>
+              <p id="outSubSetup" class="text-xs text-slate-300 mt-1">Sugestão: 4x Sub 18" (800W cada) acoplados no centro (acoplamento +6dB) ou L/R.</p>
+            </div>
+            <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-4">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-xs font-bold text-cyan-400">VIAS MÉDIAS / AGUDAS (TOPS)</span>
+                <span id="outTopRatio" class="text-xs mono text-slate-400">40%</span>
+              </div>
+              <p id="outTopWatts" class="text-lg font-bold text-white mono">1.920 W RMS</p>
+              <p id="outTopSetup" class="text-xs text-slate-300 mt-1">Sugestão: 2x Caixas Alta 15" (1000W) ou 4x elementos Line Array por lado.</p>
+            </div>
+          </div>
+
+          <!-- ALINHAMENTO, FRONTFILL E DELAY -->
+          <div class="bg-slate-950 border border-slate-800 rounded-lg p-4 space-y-2 text-xs">
+            <h3 class="font-bold text-slate-200 uppercase tracking-wider text-[11px]">Notas de Cobertura & Alinhamento Temporal</h3>
+            <p id="outDelayNote" class="text-slate-300"></p>
+            <p id="outFrontfillNote" class="text-slate-300"></p>
+            <p id="outAcousticNote" class="text-amber-300/90"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ÁREA OCULTA PARA GERAÇÃO DO PDF LIMPO A4 -->
+  <div id="pdf-container" class="hidden"></div>
+
+  <script>
+    // ESTADO GLOBAL DA APLICAÇÃO
+    let state = {
+      artistName: '',
+      showFormat: '',
+      eventInfo: '',
+      techName: '',
+      techPhone: '',
+      logoDataUrl: '',
+      acVoltage: '127V Estabilizado e Aterrado',
+      consoleReq: 'Digital 32 canais (X32, M32, SQ5 ou similar)',
+      stageNotes: '• Energia exclusiva para áudio (separada da iluminação/dimmers) com aterramento real.\n• Praticável de bateria 2,00m x 2,00m acarpetado (quando aplicável).\n• Todos os pedestais devem possuir cachimbos/garras em perfeito estado.',
+      stageItems: [],
+      inputs: [],
+      monitors: [
+        { aux: 'AUX 1 / MIX 1', musician: 'Voz Principal', type: 'IEM Sem Fio (Estéreo)', notes: 'Voz + Violão + Click' },
+        { aux: 'AUX 2 / MIX 2', musician: 'Bateria', type: 'IEM Com Fio (Powerplay)', notes: 'Click + VS + Baixo + Voz' },
+        { aux: 'AUX 3 / MIX 3', musician: 'Guitarra / Baixo', type: 'Monitor Chão (Wedge)', notes: 'Banda geral + Vozes' }
+      ],
+      pa: { audience: 300, depth: 22, width: 14, env: 'indoor_reverb', style: 'band' }
+    };
+
+    // PRESETS DE CANAIS POR INSTRUMENTO (ORDEM PADRÃO DE ENGENHARIA)
+    const instrumentPresets = {
+      drums: [
+        { order: 1, name: 'Bumbo (Kick In/Out)', mic: 'Shure Beta 52A / D112', stand: 'Pedestal Girafa Curto', phantom: false, obs: 'Gate suave' },
+        { order: 2, name: 'Caixa Top (Snare)', mic: 'Shure SM57', stand: 'Garra ou Pedestal', phantom: false, obs: '' },
+        { order: 3, name: 'Hi-Hat (Chimbal)', mic: 'Condensador Lápis (SM81)', stand: 'Pedestal Girafa', phantom: true, obs: 'HPF 120Hz' },
+        { order: 4, name: 'Tom 1', mic: 'Sennheiser e604', stand: 'Garra', phantom: false, obs: '' },
+        { order: 5, name: 'Tom 2', mic: 'Sennheiser e604', stand: 'Garra', phantom: false, obs: '' },
+        { order: 6, name: 'Surdo (Floor Tom)', mic: 'Sennheiser e604 / Beta 52', stand: 'Garra', phantom: false, obs: '' },
+        { order: 7, name: 'Overhead L', mic: 'Condensador Diafragma', stand: 'Pedestal Girafa Alto', phantom: true, obs: 'Pan L' },
+        { order: 8, name: 'Overhead R', mic: 'Condensador Diafragma', stand: 'Pedestal Girafa Alto', phantom: true, obs: 'Pan R' }
+      ],
+      perc: [
+        { order: 10, name: 'Congas / Timbal', mic: 'Shure SM57 / e604', stand: 'Pedestal / Garra', phantom: false, obs: '' },
+        { order: 11, name: 'Cajón / Surdo Perc.', mic: 'Beta 52A + SM57', stand: 'Pedestal Curto', phantom: false, obs: '' },
+        { order: 12, name: 'Over Percussão (Efeitos)', mic: 'Condensador Lápis', stand: 'Pedestal Alto', phantom: true, obs: '' }
+      ],
+      bass: [
+        { order: 15, name: 'Baixo (Linha DI)', mic: 'Direct Box Ativo (J48)', stand: 'Chão', phantom: true, obs: 'Pre-EQ' },
+        { order: 16, name: 'Baixo (Mic Amp)', mic: 'AKG D112 / RE20', stand: 'Pedestal Curto', phantom: false, obs: 'Alinhar fase c/ DI' }
+      ],
+      gtr: [
+        { order: 20, name: 'Guitarra (Mic / Linha)', mic: 'Shure SM57 / e906 ou DI', stand: 'Pedestal Curto / Garra', phantom: false, obs: '' }
+      ],
+      acoustic: [
+        { order: 22, name: 'Violão (Linha DI)', mic: 'Direct Box Ativo', stand: 'Chão', phantom: true, obs: '' }
+      ],
+      keys: [
+        { order: 25, name: 'Teclado L', mic: 'Direct Box Passivo/Ativo', stand: 'Chão', phantom: false, obs: 'Pan L' },
+        { order: 26, name: 'Teclado R', mic: 'Direct Box Passivo/Ativo', stand: 'Chão', phantom: false, obs: 'Pan R' }
+      ],
+      vs: [
+        { order: 28, name: 'VS / Playback L', mic: 'Direct Box', stand: 'Chão', phantom: false, obs: 'Pan L' },
+        { order: 29, name: 'VS / Playback R', mic: 'Direct Box', stand: 'Chão', phantom: false, obs: 'Pan R' },
+        { order: 30, name: 'Click / Regência', mic: 'Direct Box', stand: 'Chão', phantom: false, obs: 'SOMENTE FONES (Mute PA)' }
+      ],
+      vocal: [
+        { order: 40, name: 'Voz', mic: 'Shure SM58 / Beta 58A', stand: 'Pedestal Girafa', phantom: false, obs: 'HPF 100Hz' }
+      ]
+    };
+
+    // INICIALIZAÇÃO
+    window.onload = () => {
+      const saved = localStorage.getItem('passagempro_v1');
+      if (saved) {
+        try { state = { ...state, ...JSON.parse(saved) }; } catch (e) {}
+      } else {
+        // Setup inicial de exemplo para não abrir vazio
+        addStageItem('drums', '🥁 Bateria', true, 50, 22);
+        addStageItem('bass', '🎸 Baixo', true, 24, 32);
+        addStageItem('gtr', '⚡ Guitarra', true, 76, 32);
+        addStageItem('keys', '🎹 Teclado', true, 82, 58);
+        addStageItem('vocal', '🎤 Voz Lead', true, 50, 72);
+        addStageItem('wedge', '🔊 Mon 1', false, 50, 84);
+      }
+      syncFormFromState();
+      renderStage();
+      renderInputs();
+      renderMonitors();
+      calculatePA();
+    };
+
+    function saveState() {
+      state.artistName = document.getElementById('artistName').value;
+      state.showFormat = document.getElementById('showFormat').value;
+      state.eventInfo = document.getElementById('eventInfo').value;
+      state.techName = document.getElementById('techName').value;
+      state.techPhone = document.getElementById('techPhone').value;
+      state.acVoltage = document.getElementById('acVoltage').value;
+      state.consoleReq = document.getElementById('consoleReq').value;
+      state.stageNotes = document.getElementById('stageNotes').value;
+      localStorage.setItem('passagempro_v1', JSON.stringify(state));
+    }
+
+    function syncFormFromState() {
+      document.getElementById('artistName').value = state.artistName || '';
+      document.getElementById('showFormat').value = state.showFormat || '';
+      document.getElementById('eventInfo').value = state.eventInfo || '';
+      document.getElementById('techName').value = state.techName || '';
+      document.getElementById('techPhone').value = state.techPhone || '';
+      document.getElementById('acVoltage').value = state.acVoltage || '127V Estabilizado e Aterrado';
+      document.getElementById('consoleReq').value = state.consoleReq || '';
+      document.getElementById('stageNotes').value = state.stageNotes || '';
+      document.getElementById('paAudience').value = state.pa.audience;
+      document.getElementById('paDepth').value = state.pa.depth;
+      document.getElementById('paWidth').value = state.pa.width;
+      document.getElementById('paEnv').value = state.pa.env;
+      document.getElementById('paStyle').value = state.pa.style;
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-section').forEach(el => el.classList.add('hidden'));
+      document.getElementById('sec-' + tab).classList.remove('hidden');
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-amber-400', 'text-amber-400');
+        btn.classList.add('border-transparent', 'text-slate-400');
+      });
+      const active = document.getElementById('tab-' + tab);
+      active.classList.remove('border-transparent', 'text-slate-400');
+      active.classList.add('border-amber-400', 'text-amber-400');
+    }
+
+    function handleLogoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.logoDataUrl = reader.result;
+        saveState();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // MÓDULO 2: MAPA DE PALCO
+    function addStageItem(type, label, populateInputs, xPct = null, yPct = null) {
+      const id = 'item_' + Date.now() + Math.random().toString(36).slice(2, 6);
+      const x = xPct !== null ? xPct : 30 + Math.floor(Math.random() * 40);
+      const y = yPct !== null ? yPct : 30 + Math.floor(Math.random() * 40);
+      state.stageItems.push({ id, type, label, x, y });
+
+      if (populateInputs && instrumentPresets[type]) {
+        instrumentPresets[type].forEach(ch => {
+          state.inputs.push({
+            id: 'ch_' + Date.now() + Math.random().toString(36).slice(2, 6),
+            order: ch.order,
+            name: ch.name,
+            mic: ch.mic,
+            stand: ch.stand,
+            phantom: ch.phantom,
+            obs: ch.obs
+          });
+        });
+        sortInputList(false);
+      }
+      renderStage();
+      renderInputs();
+      saveState();
+    }
+
+    function renderStage() {
+      const canvas = document.getElementById('stageCanvas');
+      canvas.innerHTML = '';
+      state.stageItems.forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'stage-item absolute -translate-x-1/2 -translate-y-1/2 bg-slate-800/95 border border-slate-600 hover:border-amber-400 rounded-xl px-3 py-2 shadow-lg cursor-grab flex flex-col items-center gap-1 min-w-[84px]';
+        el.style.left = item.x + '%';
+        el.style.top = item.y + '%';
+
+        const isMonitor = ['wedge', 'iem', 'ac'].includes(item.type);
+        const badgeColor = isMonitor ? 'text-cyan-300' : 'text-amber-300';
+
+        el.innerHTML = `
+          <div class="flex items-center justify-between w-full gap-2">
+            <span class="text-xs font-bold ${badgeColor} whitespace-nowrap">${item.label}</span>
+            <button onclick="removeStageItem('${item.id}')" class="text-[10px] text-slate-400 hover:text-rose-400 font-bold no-pdf">✕</button>
+          </div>
+          <input type="text" value="${item.sub || ''}" placeholder="Músico/Obs" onchange="updateStageSub('${item.id}', this.value)" class="w-20 bg-slate-950/80 text-[10px] text-center text-slate-300 rounded px-1 py-0.5 border border-slate-700/80 focus:outline-none focus:border-amber-400" />
+        `;
+
+        // Drag com Pointer Events (Mouse + Touch)
+        el.addEventListener('pointerdown', (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+          el.setPointerCapture(e.pointerId);
+          const rect = canvas.getBoundingClientRect();
+          const onMove = (ev) => {
+            let nx = ((ev.clientX - rect.left) / rect.width) * 100;
+            let ny = ((ev.clientY - rect.top) / rect.height) * 100;
+            nx = Math.max(6, Math.min(94, nx));
+            ny = Math.max(8, Math.min(92, ny));
+            item.x = Math.round(nx * 10) / 10;
+            item.y = Math.round(ny * 10) / 10;
+            el.style.left = item.x + '%';
+            el.style.top = item.y + '%';
+          };
+          const onUp = () => {
+            el.removeEventListener('pointermove', onMove);
+            el.removeEventListener('pointerup', onUp);
+            saveState();
+          };
+          el.addEventListener('pointermove', onMove);
+          el.addEventListener('pointerup', onUp);
+        });
+
+        canvas.appendChild(el);
+      });
+    }
+
+    function updateStageSub(id, val) {
+      const item = state.stageItems.find(i => i.id === id);
+      if (item) { item.sub = val; saveState(); }
+    }
+
+    function removeStageItem(id) {
+      state.stageItems = state.stageItems.filter(i => i.id !== id);
+      renderStage();
+      saveState();
+    }
+
+    function clearStage() {
+      state.stageItems = [];
+      renderStage();
+      saveState();
+    }
+
+    // MÓDULO 3: INPUT LIST & MONITORES
+    function renderInputs() {
+      const tbody = document.getElementById('inputTableBody');
+      tbody.innerHTML = '';
+      document.getElementById('channelCount').innerText = state.inputs.length;
+
+      state.inputs.forEach((ch, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/40';
+        tr.innerHTML = `
+          <td class="py-1.5 px-2 mono font-bold text-amber-400">${String(idx + 1).padStart(2, '0')}</td>
+          <td class="py-1.5 px-2"><input type="text" value="${ch.name}" onchange="updateInput(${idx}, 'name', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white" /></td>
+          <td class="py-1.5 px-2"><input type="text" value="${ch.mic}" onchange="updateInput(${idx}, 'mic', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200" /></td>
+          <td class="py-1.5 px-2"><input type="text" value="${ch.stand}" onchange="updateInput(${idx}, 'stand', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-300" /></td>
+          <td class="py-1.5 px-2 text-center"><input type="checkbox" ${ch.phantom ? 'checked' : ''} onchange="updateInput(${idx}, 'phantom', this.checked)" class="accent-amber-500 w-4 h-4" /></td>
+          <td class="py-1.5 px-2"><input type="text" value="${ch.obs || ''}" onchange="updateInput(${idx}, 'obs', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-400" /></td>
+          <td class="py-1.5 px-2 text-center"><button onclick="removeInput(${idx})" class="text-rose-400 hover:text-rose-300 font-bold">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateInput(idx, field, val) {
+      state.inputs[idx][field] = val;
+      saveState();
+    }
+
+    function addInputRow() {
+      state.inputs.push({ id: 'ch_' + Date.now(), order: 99, name: 'Novo Canal', mic: 'SM58 / DI', stand: 'Pedestal Girafa', phantom: false, obs: '' });
+      renderInputs();
+      saveState();
+    }
+
+    function removeInput(idx) {
+      state.inputs.splice(idx, 1);
+      renderInputs();
+      saveState();
+    }
+
+    function sortInputList(shouldSave = true) {
+      state.inputs.sort((a, b) => (a.order || 50) - (b.order || 50));
+      renderInputs();
+      if (shouldSave) saveState();
+    }
+
+    function renderMonitors() {
+      const tbody = document.getElementById('monitorTableBody');
+      tbody.innerHTML = '';
+      state.monitors.forEach((m, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="py-1.5 px-2"><input type="text" value="${m.aux}" onchange="updateMonitor(${idx}, 'aux', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-cyan-400 font-bold mono" /></td>
+          <td class="py-1.5 px-2"><input type="text" value="${m.musician}" onchange="updateMonitor(${idx}, 'musician', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-white" /></td>
+          <td class="py-1.5 px-2"><input type="text" value="${m.type}" onchange="updateMonitor(${idx}, 'type', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-200" /></td>
+          <td class="py-1.5 px-2"><input type="text" value="${m.notes}" onchange="updateMonitor(${idx}, 'notes', this.value)" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-slate-300" /></td>
+          <td class="py-1.5 px-2 text-center"><button onclick="removeMonitor(${idx})" class="text-rose-400 font-bold">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateMonitor(idx, field, val) {
+      state.monitors[idx][field] = val;
+      saveState();
+    }
+
+    function addMonitorRow() {
+      const next = state.monitors.length + 1;
+      state.monitors.push({ aux: `AUX ${next} / MIX ${next}`, musician: 'Músico', type: 'Monitor / IEM', notes: '' });
+      renderMonitors();
+      saveState();
+    }
+
+    function removeMonitor(idx) {
+      state.monitors.splice(idx, 1);
+      renderMonitors();
+      saveState();
+    }
+
+    // MÓDULO 4: CALCULADORA DE PA (ENGENHARIA ACÚSTICA REAL)
+    function calculatePA() {
+      const audience = Math.max(10, Number(document.getElementById('paAudience').value) || 100);
+      const depth = Math.max(5, Number(document.getElementById('paDepth').value) || 20);
+      const width = Math.max(4, Number(document.getElementById('paWidth').value) || 12);
+      const env = document.getElementById('paEnv').value;
+      const style = document.getElementById('paStyle').value;
+
+      state.pa = { audience, depth, width, env, style };
+      saveState();
+
+      // SPL Alvo na House Mix (70% da profundidade) e Fator de Crista (Headroom)
+      const styleMap = {
+        speech:   { spl: 92,  crest: 12, subRatio: 0.30, label: 'Fala/Culto' },
+        acoustic: { spl: 96,  crest: 14, subRatio: 0.45, label: 'Acústico' },
+        band:     { spl: 102, crest: 15, subRatio: 0.60, label: 'Banda ao Vivo' },
+        dj:       { spl: 106, crest: 12, subRatio: 0.70, label: 'DJ/Eletrônico' }
+      };
+      const cfg = styleMap[style];
+
+      // Atenuação por distância (Lei do Inverso do Quadrado: 20 * log10(d)) ajustada pelo campo reverberante
+      const envFactor = {
+        indoor_treated: 17, // ganho moderado da sala
+        indoor_reverb:  15, // campo difuso sustenta mais SPL, mas exige controle de diretividade
+        semi_open:      19,
+        outdoor:        20  // campo livre puro (-6dB por dobra de distância)
+      }[env];
+
+      const mixDist = Math.max(4, depth * 0.7);
+      const distLoss = envFactor * Math.log10(mixDist);
+      const splPeak1m = Math.round(cfg.spl + distLoss + (cfg.crest - 6));
+
+      // Estimativa de Potência RMS necessária (considerando sensibilidade média 98dB 1W/1m e absorção de público)
+      const area = depth * width;
+      const acousticDemand = Math.pow(10, (splPeak1m - 98) / 10);
+      let rmsTotal = Math.round((acousticDemand * 1.8 + audience * 4.5 + area * 3.2) / 100) * 100;
+      rmsTotal = Math.max(1200, rmsTotal);
+      const progTotal = rmsTotal * 2;
+
+      const subWatts = Math.round((rmsTotal * cfg.subRatio) / 100) * 100;
+      const topWatts = rmsTotal - subWatts;
+
+      // Sugestão prática de caixas
+      const numSubs = Math.max(2, Math.ceil(subWatts / 800));
+      const numTops = Math.max(2, Math.ceil(topWatts / 600));
+
+      document.getElementById('outSplTarget').innerText = `${cfg.spl} dB`;
+      document.getElementById('outSpl1m').innerText = `${splPeak1m} dB`;
+      document.getElementById('outRmsTotal').innerText = `${rmsTotal.toLocaleString('pt-BR')} W`;
+      document.getElementById('outProgTotal').innerText = `${progTotal.toLocaleString('pt-BR')} W`;
+
+      document.getElementById('outSubRatio').innerText = `${Math.round(cfg.subRatio * 100)}%`;
+      document.getElementById('outTopRatio').innerText = `${Math.round((1 - cfg.subRatio) * 100)}%`;
+      document.getElementById('outSubWatts').innerText = `${subWatts.toLocaleString('pt-BR')} W RMS`;
+      document.getElementById('outTopWatts').innerText = `${topWatts.toLocaleString('pt-BR')} W RMS`;
+
+      document.getElementById('outSubSetup').innerText = `Sugestão: ${numSubs}x Sub 18" (~800W RMS cada). ${numSubs >= 4 ? 'Recomendado arranjo em linha/arco central para evitar cancelamento (power alley).' : 'Disposição L/R ou centro.'}`;
+      document.getElementById('outTopSetup').innerText = `Sugestão: ${numTops}x Caixas Alta (ou ${Math.max(2, Math.round(numTops/2))} elementos Line Array por lado) com cobertura horizontal de 90° a 100°.`;
+
+      // Alinhamento Temporal & Cobertura
+      if (depth > 25) {
+        const delayDist = Math.round(depth * 0.55);
+        const delayMs = ((delayDist / 343) * 1000).toFixed(1);
+        document.getElementById('outDelayNote').innerHTML = `⏱ <strong>Torres de Delay Necessárias:</strong> Profundidade de ${depth}m gera perda excessiva no fundo. Posicione torre de delay a <strong>${delayDist}m</strong> do PA com atraso base de <strong>${delayMs} ms</strong> (+10 a 15ms pelo Efeito Haas).`;
+      } else {
+        document.getElementById('outDelayNote').innerHTML = `✅ <strong>Cobertura Longitudinal:</strong> Profundidade de ${depth}m atendida diretamente pelo PA principal sem necessidade de torres de delay.`;
+      }
+
+      if (width > 10) {
+        const ffCount = Math.max(2, Math.floor(width / 4));
+        document.getElementById('outFrontfillNote').innerHTML = `🔊 <strong>Frontfill Recomendado:</strong> Boca de palco de ${width}m cria zona de sombra nas primeiras fileiras centrais. Adicione <strong>${ffCount} caixas compactas (8" ou 10")</strong> na borda do palco.`;
+      } else {
+        document.getElementById('outFrontfillNote').innerHTML = `✅ <strong>Cobertura Frontal:</strong> Largura de ${width}m coberta adequadamente pelo ângulo de dispersão do PA L/R.`;
+      }
+
+      const envAdvice = {
+        indoor_reverb: '⚠️ Ambiente Reverberante: Priorize caixas com diretividade controlada, evite excesso de grave sob o palco e corte sobras abaixo de 35Hz (HPF).',
+        indoor_treated: '🎯 Ambiente Tratado: Excelente inteligibilidade; mantenha relação Sub/Top equilibrada.',
+        semi_open: '🌬️ Semi-aberto: Atenção à dispersão lateral; alinhe fase entre Subs e Tops na região de crossover (80Hz–100Hz).',
+        outdoor: '☀️ Ar Livre (Campo Livre): Sem reflexão de paredes; graves dissipam rápido — garanta reserva de headroom nos Subgraves.'
+      }[env];
+      document.getElementById('outAcousticNote').innerText = envAdvice;
+    }
+
+    // EXPORTAR / IMPORTAR JSON
+    function exportJSON() {
+      saveState();
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PassagemPro_${(state.artistName || 'Rider').replace(/\s+/g, '_')}.json`;
+      a.click();
+    }
+
+    function importJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          state = JSON.parse(reader.result);
+          syncFormFromState();
+          renderStage();
+          renderInputs();
+          renderMonitors();
+          calculatePA();
+          saveState();
+          alert('Projeto carregado com sucesso!');
+        } catch (err) {
+          alert('Arquivo JSON inválido.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetAll() {
+      if (!confirm('Deseja limpar todo o rider atual e começar do zero?')) return;
+      localStorage.removeItem('passagempro_v1');
+      location.reload();
+    }
+
+    // GERADOR DE PDF A4 EXECUTIVO (2 PÁGINAS LIMPAS)
+    function generatePDF() {
+      saveState();
+      const container = document.getElementById('pdf-container');
+      container.classList.remove('hidden');
+
+      const stageItemsHTML = state.stageItems.map(item => `
+        <div style="position:absolute; left:${item.x}%; top:${item.y}%; transform:translate(-50%,-50%); background:#f8fafc; border:1.5px solid #334155; border-radius:6px; padding:4px 8px; text-align:center; font-size:10px; font-weight:700; color:#0f172a; min-width:72px;">
+          <div>${item.label}</div>
+          ${item.sub ? `<div style="font-size:8.5px; font-weight:500; color:#475569;">${item.sub}</div>` : ''}
+        </div>
+      `).join('');
+
+      const inputsHTML = state.inputs.map((ch, i) => `
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:4px 6px; font-weight:700; font-family:monospace;">${String(i+1).padStart(2,'0')}</td>
+          <td style="padding:4px 6px; font-weight:600;">${ch.name}</td>
+          <td style="padding:4px 6px;">${ch.mic}</td>
+          <td style="padding:4px 6px;">${ch.stand}</td>
+          <td style="padding:4px 6px; text-align:center; font-weight:700;">${ch.phantom ? 'SIM' : '-'}</td>
+          <td style="padding:4px 6px; color:#475569;">${ch.obs || ''}</td>
+        </tr>
+      `).join('');
+
+      const monitorsHTML = state.monitors.map(m => `
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:4px 6px; font-weight:700; font-family:monospace;">${m.aux}</td>
+          <td style="padding:4px 6px; font-weight:600;">${m.musician}</td>
+          <td style="padding:4px 6px;">${m.type}</td>
+          <td style="padding:4px 6px;">${m.notes}</td>
+        </tr>
+      `).join('');
+
+      container.innerHTML = `
+        <div style="font-family:Inter, sans-serif; color:#0f172a; background:#ffffff; padding:24px; font-size:11px; line-height:1.4;">
+          <!-- CABEÇALHO -->
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #0f172a; padding-bottom:12px; margin-bottom:14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              ${state.logoDataUrl ? `<img src="${state.logoDataUrl}" style="height:48px; width:auto; object-fit:contain;" />` : ''}
+              <div>
+                <div style="font-size:18px; font-weight:800; text-transform:uppercase; letter-spacing:-0.5px;">${state.artistName || 'RIDER TÉCNICO DE ÁUDIO'}</div>
+                <div style="font-size:11px; color:#475569; font-weight:600;">${state.showFormat || 'Formação Padrão'} ${state.eventInfo ? ' • ' + state.eventInfo : ''}</div>
+              </div>
+            </div>
+            <div style="text-align:right; font-size:10px;">
+              <div style="font-weight:700;">Contato Técnico: ${state.techName || 'Não informado'}</div>
+              <div>WhatsApp: ${state.techPhone || '-'}</div>
+              <div style="color:#64748b; margin-top:2px;">Gerado via PassagemPro</div>
+            </div>
+          </div>
+
+          <!-- MAPA DE PALCO -->
+          <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; color:#0f172a;">1. Mapa de Palco (Stage Plot — Vista Superior)</div>
+          <div style="position:relative; width:100%; height:310px; border:2px solid #0f172a; border-radius:8px; background:#f8fafc; overflow:hidden;">
+            <div style="position:absolute; top:6px; left:10px; font-size:9px; color:#64748b; font-weight:700;">FUNDO DO PALCO (BACKLINE)</div>
+            ${stageItemsHTML}
+            <div style="position:absolute; bottom:0; left:0; right:0; background:#0f172a; color:#ffffff; text-align:center; font-size:9px; font-weight:700; padding:3px 0; letter-spacing:1px;">
+              ▲ FRENTE DO PALCO / PÚBLICO / P.A. ▲
+            </div>
+          </div>
+
+          <!-- ELÉTRICA & OBSERVAÇÕES -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:14px;">
+            <div style="border:1px solid #cbd5e1; border-radius:6px; padding:10px;">
+              <div style="font-weight:800; font-size:10px; text-transform:uppercase; margin-bottom:4px;">2. Elétrica & Console</div>
+              <div><strong>Tensão AC:</strong> ${state.acVoltage}</div>
+              <div><strong>Console:</strong> ${state.consoleReq}</div>
+            </div>
+            <div style="border:1px solid #cbd5e1; border-radius:6px; padding:10px;">
+              <div style="font-weight:800; font-size:10px; text-transform:uppercase; margin-bottom:4px;">3. Dimensionamento de PA Estimado</div>
+              <div><strong>Público/Área:</strong> ${state.pa.audience} pessoas (${state.pa.depth}m x ${state.pa.width}m)</div>
+              <div><strong>Potência Recomendada:</strong> ${document.getElementById('outRmsTotal').innerText} RMS (Alvo ${document.getElementById('outSplTarget').innerText})</div>
+            </div>
+          </div>
+
+          <div style="border:1px solid #cbd5e1; border-radius:6px; padding:10px; margin-top:10px; white-space:pre-line; font-size:10px;">
+            <strong>Notas Gerais:</strong>\n${state.stageNotes}
+          </div>
+
+          <!-- QUEBRA DE PÁGINA PARA INPUT LIST -->
+          <div style="page-break-before: always; padding-top:8px;">
+            <div style="font-size:12px; font-weight:800; text-transform:uppercase; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-bottom:8px;">
+              4. Input List / Patch de Canais (${state.inputs.length} Canais)
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:10px;">
+              <thead>
+                <tr style="background:#0f172a; color:#ffffff; text-align:left;">
+                  <th style="padding:5px 6px; width:34px;">CH</th>
+                  <th style="padding:5px 6px;">Instrumento / Fonte</th>
+                  <th style="padding:5px 6px;">Microfone / DI</th>
+                  <th style="padding:5px 6px;">Pedestal / Garra</th>
+                  <th style="padding:5px 6px; text-align:center; width:44px;">+48V</th>
+                  <th style="padding:5px 6px;">Observação</th>
+                </tr>
+              </thead>
+              <tbody>${inputsHTML}</tbody>
+            </table>
+
+            <div style="font-size:12px; font-weight:800; text-transform:uppercase; border-bottom:2px solid #0f172a; padding-bottom:4px; margin-top:18px; margin-bottom:8px;">
+              5. Vias de Monitoração / Auxiliares
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:10px;">
+              <thead>
+                <tr style="background:#334155; color:#ffffff; text-align:left;">
+                  <th style="padding:5px 6px; width:100px;">Via / Aux</th>
+                  <th style="padding:5px 6px;">Músico / Posição</th>
+                  <th style="padding:5px 6px;">Sistema</th>
+                  <th style="padding:5px 6px;">Detalhes</th>
+                </tr>
+              </thead>
+              <tbody>${monitorsHTML}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      const opt = {
+        margin: 0.2,
+        filename: `Rider_${(state.artistName || 'PassagemPro').replace(/\s+/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      };
+
+      html2pdf().set(opt).from(container.firstElementChild).save().then(() => {
+        container.classList.add('hidden');
+        container.innerHTML = '';
+      });
+    }
+  </script>
+</body>
+</html>
