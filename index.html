@@ -29,7 +29,15 @@
       transition: filter 0.15s ease;
     }
     .stage-item:active { cursor: grabbing; z-index: 50; }
-    .stage-item-icon { display: block; overflow: visible; }
+    .stage-item-icon {
+      display: block;
+      overflow: visible;
+      background: #ffffff;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .stage-item-icon.drum { border: 1px dashed #475569; }
+    .stage-item-icon img { display: block; width: 100%; height: 100%; object-fit: contain; }
     .stage-item-label,
     .stage-item-sub {
       position: absolute;
@@ -236,17 +244,19 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
-          <button onclick="addStageItem('drums', 'Bateria', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🥁 Bateria (8 ch)</button>
-          <button onclick="addStageItem('perc', 'Percussão', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🪘 Percussão (3 ch)</button>
-          <button onclick="addStageItem('bass', 'Baixo', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🎸 Baixo (2 ch)</button>
-          <button onclick="addStageItem('gtr', 'Guitarra', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ ⚡ Guitarra (1 ch)</button>
-          <button onclick="addStageItem('acoustic', 'Violão DI', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🪕 Violão DI (1 ch)</button>
-          <button onclick="addStageItem('keys', 'Teclado L/R', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🎹 Teclado (2 ch)</button>
-          <button onclick="addStageItem('vs', 'VS / Click', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 💻 VS / Click (3 ch)</button>
-          <button onclick="addStageItem('vocal', 'Voz', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ 🎤 Voz (1 ch)</button>
-          <button onclick="addStageItem('wedge', 'Monitor Chão', false)" class="px-3 py-1.5 text-xs font-medium bg-cyan-950/60 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 rounded-lg border border-cyan-800 transition">+ 🔊 Monitor Chão</button>
-          <button onclick="addStageItem('iem', 'Ponto In-Ear', false)" class="px-3 py-1.5 text-xs font-medium bg-cyan-950/60 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 rounded-lg border border-cyan-800 transition">+ 🎧 Ponto In-Ear</button>
-          <button onclick="addStageItem('ac', 'Ponto AC', false)" class="px-3 py-1.5 text-xs font-medium bg-emerald-950/60 hover:bg-emerald-500 hover:text-slate-950 text-emerald-300 rounded-lg border border-emerald-800 transition">+ 🔌 Ponto AC</button>
+          <button onclick="addStageItem('bateria', 'Bateria', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ Bateria (8 ch)</button>
+          <button onclick="addStageItem('baixo-amp', 'Baixo (Amp)', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ Baixo (Amp)</button>
+          <button onclick="addStageItem('baixo-linha', 'Baixo (Linha)', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ Baixo (Linha)</button>
+          <button onclick="addStageItem('guita-amp', 'Guitarra (Amp)', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ Guitarra (Amp)</button>
+          <button onclick="addStageItem('guita-linha', 'Guitarra (Linha)', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ Guitarra (Linha)</button>
+          <button onclick="addStageItem('violao', 'Violão', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ Violão</button>
+          <button onclick="addStageItem('teclado', 'Teclado', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ Teclado (2 ch)</button>
+          <button onclick="addStageItem('vocal', 'Voz', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ Voz (1 ch)</button>
+          <button onclick="addStageItem('vs-click', 'VS / Click', true)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ VS / Click (3 ch)</button>
+          <button onclick="addStageItem('di', 'Direct Box (DI)', false)" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-amber-500 hover:text-slate-950 rounded-lg border border-slate-700 transition">+ Direct Box (DI)</button>
+          <button onclick="addStageItem('monitor-l', 'Monitor L', false)" class="px-3 py-1.5 text-xs font-medium bg-cyan-950/60 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 rounded-lg border border-cyan-800 transition">+ Monitor L</button>
+          <button onclick="addStageItem('monitor-r', 'Monitor R', false)" class="px-3 py-1.5 text-xs font-medium bg-cyan-950/60 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 rounded-lg border border-cyan-800 transition">+ Monitor R</button>
+          <button onclick="addStageItem('ac', 'Ponto AC', false)" class="px-3 py-1.5 text-xs font-medium bg-emerald-950/60 hover:bg-emerald-500 hover:text-slate-950 text-emerald-300 rounded-lg border border-emerald-800 transition">+ Ponto AC</button>
         </div>
       </div>
 
@@ -658,82 +668,50 @@
     };
     let selectedStageItemId = null;
 
-    const stageItemSvgs = {
-      drums: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="4" y="4" width="112" height="82" rx="3" stroke-dasharray="5 3"/>
-        <circle cx="60" cy="68" r="13"/><circle cx="60" cy="68" r="4" fill="none"/>
-        <circle cx="35" cy="48" r="8"/><circle cx="51" cy="31" r="7"/><circle cx="69" cy="29" r="7"/><circle cx="88" cy="49" r="9"/>
-        <circle cx="25" cy="27" r="8"/><circle cx="97" cy="22" r="9"/>
-        <path d="M25 35v8m0-8-6 8m6-8 6 8M97 31v10m0-10-7 10m7-10 7 10"/>
-        <path d="M51 38v8m18-10v10M88 58v7M35 56v8"/>
-        <circle cx="60" cy="48" r="5"/><path d="M56 48h8M60 44v8"/>
-      </svg>`,
-      perc: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <ellipse cx="27" cy="45" rx="11" ry="22"/><ellipse cx="54" cy="45" rx="11" ry="22"/>
-        <path d="M16 45v12c0 12 22 12 22 0V45m5 0v12c0 12 22 12 22 0V45"/>
-        <circle cx="83" cy="34" r="10"/><circle cx="105" cy="34" r="10"/><path d="M73 34v26m20-26v26m12-26v26"/>
-        <circle cx="35" cy="17" r="9"/><circle cx="76" cy="17" r="8"/>
-        <path d="M35 26v9m0-9-6 9m6-9 6 9M76 25v10m0-10-6 10m6-10 6 10"/>
-        <path d="M13 68h48m10-4h39"/>
-      </svg>`,
-      bass: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="5" y="12" width="35" height="17" rx="3"/><circle cx="14" cy="20" r="1.5"/><circle cx="22" cy="20" r="1.5"/><circle cx="30" cy="20" r="1.5"/>
-        <rect x="5" y="33" width="35" height="40" rx="3"/><circle cx="22" cy="53" r="12"/><circle cx="22" cy="53" r="3"/>
-        <path d="M77 40 95 18l7 5-18 25c7 9 2 22-8 25-8 2-16-3-17-11-2-9 5-17 14-17 3 0 6 1 8 3z"/>
-        <path d="m80 41 22-25m-18 31 16 11m-20-4 14 10M95 18l6-6 7 5-6 6"/>
-      </svg>`,
-      gtr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="5" y="19" width="36" height="52" rx="3"/><rect x="10" y="24" width="26" height="22" rx="2"/>
-        <path d="M12 52h22m-22 5h22m-22 5h22"/><circle cx="14" cy="67" r="1.5"/><circle cx="21" cy="67" r="1.5"/>
-        <path d="M78 40 98 18l6 5-20 25c7 8 3 20-6 23-8 3-17-2-18-10-2-9 5-17 14-17 1 0 3 0 4 1z"/>
-        <path d="m80 41 22-25m-18 32 15 10m-21-3 13 10M98 18l6-6 7 5-7 6"/>
-      </svg>`,
-      acoustic: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M68 43 90 18l6 5-22 27c6 8 4 18-3 23-8 7-21 4-24-6-3-9 3-18 12-19 3 0 6 1 9 3z"/>
-        <circle cx="63" cy="57" r="5"/><path d="m70 44 22-25m-17 33 12 9m-19-3 10 9M90 18l6-6 7 5-7 6"/>
-        <rect x="9" y="53" width="29" height="23" rx="3"/><circle cx="17" cy="64" r="2"/><circle cx="30" cy="64" r="2"/>
-        <path d="M13 58h4m9 0h8M15 72h17"/>
-      </svg>`,
-      keys: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="6" y="20" width="108" height="51" rx="3"/><path d="M12 28h96v36H12z"/>
-        <path d="M20 28v36m12-36v36m12-36v36m12-36v36m12-36v36m12-36v36m12-36v36m12-36v36"/>
-        <path d="M26 28v22h-8V28m20 0v22h-8V28m20 0v22h-8V28m20 0v22h-8V28m20 0v22h-8V28m20 0v22h-8V28"/>
-        <path d="M17 76h86m-76 0v5m66-5v5"/>
-      </svg>`,
-      vs: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M13 17h59v39H13z"/><path d="M9 59h68l7 8H3z"/><circle cx="42" cy="62" r="1.5"/>
-        <rect x="87" y="31" width="27" height="34" rx="3"/><circle cx="94" cy="39" r="2"/><circle cx="107" cy="39" r="2"/>
-        <circle cx="94" cy="51" r="4"/><circle cx="107" cy="51" r="4"/><path d="M92 60h17"/>
-        <path d="M20 24h45v25H20zM27 72h29"/>
-      </svg>`,
-      vocal: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="60" cy="69" r="8"/><path d="M60 61V25m0 36-16 13m16-13 16 13"/>
-        <path d="M60 25 48 13"/><rect x="39" y="8" width="17" height="7" rx="3" transform="rotate(42 47.5 11.5)"/>
-        <path d="M52 24h16m-8-7v8"/>
-      </svg>`,
-      wedge: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M21 65 34 25h52l13 40z"/><path d="M35 58h50M42 31l-8 25m44-25 8 25"/>
-        <circle cx="60" cy="47" r="11"/><circle cx="60" cy="47" r="4"/><path d="M27 69h66"/>
-      </svg>`,
-      iem: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="15" y="31" width="48" height="38" rx="5"/><path d="M24 31 33 13l4 2-6 16"/>
-        <circle cx="28" cy="45" r="3"/><circle cx="50" cy="45" r="3"/><rect x="25" y="54" width="28" height="8" rx="2"/>
-        <path d="M65 48c9-11 19-11 28 0m-28 0c9 11 19 11 28 0"/>
-        <path d="M93 48v-9a7 7 0 0 1 14 0v9m-14-1h-5v8h7v-8m12 0h5v8h-7v-8"/>
-      </svg>`,
-      ac: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="10" y="30" width="100" height="34" rx="5"/><path d="M20 30v-6h10v6m60 0v-6h10v6"/>
-        <circle cx="29" cy="47" r="7"/><path d="M26 43v6m6-6v6m17-2a7 7 0 0 1 14 0v5H49z"/><circle cx="83" cy="47" r="7"/>
-        <path d="m78 40 5 7-4 1 5 7-1-6 4-1-5-8"/>
-      </svg>`,
-      default: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" fill="#ffffff" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="20" y="17" width="80" height="56" rx="4"/><path d="m35 32 50 26m0-26L35 58"/>
-      </svg>`
+    const stageItemImages = {
+      bateria: { src: 'img/bateria.png', label: 'Bateria' },
+      'baixo-amp': { src: 'img/baixo-amp.png', label: 'Baixo (Amp)' },
+      'baixo-linha': { src: 'img/baixo-linha.png', label: 'Baixo (Linha)' },
+      'guita-amp': { src: 'img/guita-amp.png', label: 'Guitarra (Amp)' },
+      'guita-linha': { src: 'img/guita-linha.png', label: 'Guitarra (Linha)' },
+      violao: { src: 'img/violao.png', label: 'Violão' },
+      teclado: { src: 'img/teclado.png', label: 'Teclado' },
+      vocal: { src: 'img/vocal.png', label: 'Voz' },
+      'vs-click': { src: 'img/vs-click.png', label: 'VS / Click' },
+      di: { src: 'img/di.png', label: 'Direct Box (DI)' },
+      'monitor-l': { src: 'img/monitor-l.png', label: 'Monitor L' },
+      'monitor-r': { src: 'img/monitor-r.png', label: 'Monitor R' },
+      ac: { src: 'img/ac.png', label: 'Ponto AC' }
+    };
+    const stageItemAliases = {
+      drums: 'bateria', perc: 'bateria', bass: 'baixo-amp', gtr: 'guita-amp',
+      acoustic: 'violao', keys: 'teclado', vs: 'vs-click', wedge: 'monitor-l',
+      iem: 'monitor-l'
+    };
+    const legacyStageLabels = {
+      drums: ['Bateria'], perc: ['Percussão'], bass: ['Baixo'], gtr: ['Guitarra'],
+      acoustic: ['Violão DI'], keys: ['Teclado L/R', 'Teclado'], vs: ['VS / Click'],
+      wedge: ['Monitor Chão'], iem: ['Ponto In-Ear']
+    };
+    const stageItemPresetTypes = {
+      bateria: 'drums', 'baixo-amp': 'bass', 'baixo-linha': 'bass',
+      'guita-amp': 'gtr', 'guita-linha': 'gtr', violao: 'acoustic',
+      teclado: 'keys', vocal: 'vocal', 'vs-click': 'vs'
     };
 
-    function getStageItemSvg(type, rotation = 0) {
-      const svg = stageItemSvgs[type] || stageItemSvgs.default;
-      return svg.replace('<svg ', `<svg style="width:100%;height:100%;transform:rotate(${Number(rotation) || 0}deg);" `);
+    function normalizeStageItems(items) {
+      return (Array.isArray(items) ? items : []).map(item => {
+        if (!item || typeof item !== 'object') return item;
+        const oldType = String(item.type || '');
+        const type = stageItemImages[oldType] ? oldType : stageItemAliases[oldType] || 'di';
+        const label = String(item.label || '').trim();
+        const displayLabel = getStageItemLabel({ type: oldType, label });
+        const useDefaultLabel = !label || (
+          stageItemAliases[oldType] &&
+          legacyStageLabels[oldType]?.includes(displayLabel)
+        );
+        return { ...item, type, label: useDefaultLabel ? stageItemImages[type].label : label };
+      });
     }
 
     function escapeHTML(value) {
@@ -809,13 +787,14 @@
         try { state = { ...state, ...JSON.parse(saved) }; } catch (e) {}
       } else {
         // Setup inicial de exemplo para não abrir vazio
-        addStageItem('drums', 'Bateria', true, 50, 22);
-        addStageItem('bass', 'Baixo', true, 24, 32);
-        addStageItem('gtr', 'Guitarra', true, 76, 32);
-        addStageItem('keys', 'Teclado', true, 82, 58);
+        addStageItem('bateria', 'Bateria', true, 50, 22);
+        addStageItem('baixo-amp', 'Baixo (Amp)', true, 24, 32);
+        addStageItem('guita-amp', 'Guitarra (Amp)', true, 76, 32);
+        addStageItem('teclado', 'Teclado', true, 82, 58);
         addStageItem('vocal', 'Voz Lead', true, 50, 72);
-        addStageItem('wedge', 'Mon 1', false, 50, 84);
+        addStageItem('monitor-l', 'Mon 1', false, 50, 84);
       }
+      state.stageItems = normalizeStageItems(state.stageItems);
       Object.assign(state, normalizeStageDimensions(state));
       syncFormFromState();
       updateStageCanvasDimensions();
@@ -910,8 +889,9 @@
       const y = yPct !== null ? yPct : 30 + Math.floor(Math.random() * 40);
       state.stageItems.push({ id, type, label, x, y });
 
-      if (populateInputs && instrumentPresets[type]) {
-        instrumentPresets[type].forEach(ch => {
+      const presetType = stageItemPresetTypes[type];
+      if (populateInputs && presetType && instrumentPresets[presetType]) {
+        instrumentPresets[presetType].forEach(ch => {
           state.inputs.push({
             id: 'ch_' + Date.now() + Math.random().toString(36).slice(2, 6),
             order: ch.order,
@@ -952,7 +932,7 @@
         el.className = `stage-item absolute -translate-x-1/2 -translate-y-1/2 cursor-grab${selectedStageItemId === item.id ? ' selected' : ''}`;
         el.style.left = item.x + '%';
         el.style.top = item.y + '%';
-        if (item.type === 'drums') {
+        if (item.type === 'bateria') {
           el.style.width = `${(state.drumWidthM / state.stageWidthM) * 100}%`;
           el.style.height = `${(state.drumDepthM / state.stageDepthM) * 100}%`;
         } else {
@@ -961,8 +941,13 @@
         }
 
         const icon = document.createElement('div');
-        icon.className = 'stage-item-icon w-full h-full';
-        icon.innerHTML = getStageItemSvg(item.type, item.rotation);
+        icon.className = `stage-item-icon w-full h-full${item.type === 'bateria' ? ' drum' : ''}`;
+        icon.style.transform = `rotate(${Number(item.rotation) || 0}deg)`;
+        const image = document.createElement('img');
+        image.src = stageItemImages[item.type]?.src || stageItemImages.di.src;
+        image.alt = '';
+        image.draggable = false;
+        icon.appendChild(image);
         el.appendChild(icon);
 
         const label = document.createElement('input');
@@ -1256,6 +1241,7 @@
             throw new Error('Formato de projeto inválido');
           }
           state = { ...state, ...importedState, ...normalizeStageDimensions(importedState) };
+          state.stageItems = normalizeStageItems(state.stageItems);
           syncFormFromState();
           updateStageCanvasDimensions();
           renderStage();
@@ -1287,12 +1273,16 @@
       const pdfStageHeight = Math.min(360, 700 / stageAspectRatio);
       const pdfStageWidth = pdfStageHeight * stageAspectRatio;
       const stageItemsHTML = state.stageItems.map(item => {
-        const isDrums = item.type === 'drums';
+        const isDrums = item.type === 'bateria';
         const itemWidth = isDrums ? `${(state.drumWidthM / state.stageWidthM) * 100}%` : '82px';
         const itemHeight = isDrums ? `${(state.drumDepthM / state.stageDepthM) * 100}%` : '68px';
+        const imagePath = stageItemImages[item.type]?.src || stageItemImages.di.src;
+        const drumBorder = isDrums ? 'border:1px dashed #475569; box-sizing:border-box;' : '';
         return `
         <div style="position:absolute; left:${item.x}%; top:${item.y}%; transform:translate(-50%,-50%); width:${itemWidth}; height:${itemHeight}; z-index:2;">
-          ${getStageItemSvg(item.type, item.rotation)}
+          <div style="width:100%; height:100%; background:#ffffff; border-radius:4px; ${drumBorder} transform:rotate(${Number(item.rotation) || 0}deg);">
+            <img src="${imagePath}" alt="" style="display:block; width:100%; height:100%; object-fit:contain;" />
+          </div>
           <div style="position:absolute; top:calc(100% + 1px); left:50%; transform:translateX(-50%); white-space:nowrap; padding:1px 3px; background:#ffffff; color:#0f172a; font-size:9px; font-weight:700; text-align:center;">${escapeHTML(getStageItemLabel(item))}</div>
           ${item.sub ? `<div style="position:absolute; top:calc(100% + 13px); left:50%; transform:translateX(-50%); white-space:nowrap; padding:1px 3px; background:#ffffff; color:#475569; font-size:8px; text-align:center;">${escapeHTML(item.sub)}</div>` : ''}
         </div>
