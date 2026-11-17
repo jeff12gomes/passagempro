@@ -6,6 +6,7 @@
   <title>PassagemPro — Rider Técnico, Mapa de Palco & Cálculo de PA</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
     body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #f1f5f9; }
@@ -106,13 +107,121 @@
     /* Ocultar controles na exportação PDF */
     .pdf-mode .no-pdf { display: none !important; }
     .pdf-mode { background: #ffffff !important; color: #0f172a !important; }
+    @media print {
+      .no-print { display: none !important; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
+  <section id="view-login" class="min-h-screen bg-slate-950 px-4 py-10" data-html2canvas-ignore="true">
+    <div class="mx-auto grid min-h-[80vh] max-w-6xl items-center gap-10 lg:grid-cols-2">
+      <div class="space-y-7">
+        <div class="flex items-center gap-3">
+          <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500 text-2xl font-extrabold text-slate-950">P</div>
+          <div>
+            <h1 class="text-3xl font-extrabold tracking-tight text-white">Passagem<span class="text-amber-400">Pro</span></h1>
+            <p class="mt-1 text-slate-300">Seu show resolvido antes de ligar o PA.</p>
+          </div>
+        </div>
+        <div>
+          <h2 class="max-w-xl text-4xl font-extrabold leading-tight text-white sm:text-5xl">Planeje o show. <span class="text-amber-400">Chegue pronto.</span></h2>
+          <p class="mt-4 max-w-lg text-base leading-relaxed text-slate-400">Organize cada rider técnico localmente e leve o planejamento completo para a equipe de áudio.</p>
+        </div>
+        <ul class="space-y-3 text-sm text-slate-200">
+          <li class="flex items-center gap-3"><span class="text-amber-400">✓</span> Mapa de Palco em Escala Real</li>
+          <li class="flex items-center gap-3"><span class="text-amber-400">✓</span> Input List Automático</li>
+          <li class="flex items-center gap-3"><span class="text-amber-400">✓</span> Alinhamento de PA</li>
+        </ul>
+      </div>
+
+      <div class="mx-auto w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl sm:p-8">
+        <div class="mb-6 grid grid-cols-2 rounded-lg bg-slate-950 p-1">
+          <button type="button" id="authTabLogin" onclick="switchAuthTab('login')" class="rounded-md bg-amber-500 px-3 py-2 text-sm font-bold text-slate-950">Entrar</button>
+          <button type="button" id="authTabSignup" onclick="switchAuthTab('signup')" class="rounded-md px-3 py-2 text-sm font-bold text-slate-400">Criar Conta</button>
+        </div>
+        <form id="loginForm" class="space-y-4" onsubmit="handleLocalLogin(event)">
+          <div>
+            <label for="loginEmail" class="mb-1 block text-xs font-semibold text-slate-300">E-mail</label>
+            <input id="loginEmail" type="email" autocomplete="email" required class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400" />
+          </div>
+          <div>
+            <label for="loginPassword" class="mb-1 block text-xs font-semibold text-slate-300">Senha</label>
+            <input id="loginPassword" type="password" autocomplete="current-password" required minlength="6" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400" />
+          </div>
+          <p id="loginError" class="hidden text-sm text-rose-300" role="alert"></p>
+          <button type="submit" class="w-full rounded-lg bg-amber-500 px-4 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-amber-400">Entrar no PassagemPro</button>
+        </form>
+        <form id="signupForm" class="hidden space-y-4" onsubmit="handleLocalSignup(event)">
+          <div>
+            <label for="signupName" class="mb-1 block text-xs font-semibold text-slate-300">Nome</label>
+            <input id="signupName" type="text" autocomplete="name" required maxlength="100" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400" />
+          </div>
+          <div>
+            <label for="signupEmail" class="mb-1 block text-xs font-semibold text-slate-300">E-mail</label>
+            <input id="signupEmail" type="email" autocomplete="email" required class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400" />
+          </div>
+          <div>
+            <label for="signupPassword" class="mb-1 block text-xs font-semibold text-slate-300">Senha (mínimo 6 caracteres)</label>
+            <input id="signupPassword" type="password" autocomplete="new-password" required minlength="6" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400" />
+          </div>
+          <p id="signupError" class="hidden text-sm text-rose-300" role="alert"></p>
+          <button type="submit" class="w-full rounded-lg bg-amber-500 px-4 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-amber-400">Criar conta local</button>
+        </form>
+        <div class="my-5 flex items-center gap-3 text-xs text-slate-500"><span class="h-px flex-1 bg-slate-800"></span>ou continue com<span class="h-px flex-1 bg-slate-800"></span></div>
+        <div id="googleSignInBtn" class="flex min-h-11 justify-center">
+          <button type="button" onclick="startGoogleSignIn()" class="w-full rounded-lg border border-slate-700 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 hover:bg-slate-100">G&nbsp; Continuar com o Google</button>
+        </div>
+        <p class="mt-5 text-center text-[11px] leading-relaxed text-slate-500">Acesso local: contas e riders ficam neste navegador. O login local é para conveniência, não substitui autenticação segura em um servidor.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-dashboard" class="hidden min-h-screen bg-slate-950 px-4 py-6 sm:py-10" data-html2canvas-ignore="true">
+    <div class="mx-auto max-w-6xl">
+      <header class="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <img id="dashboardUserPicture" class="hidden h-11 w-11 rounded-full border border-slate-700 object-cover" alt="" />
+          <div id="dashboardUserInitial" class="flex h-11 w-11 items-center justify-center rounded-full bg-amber-500 font-extrabold text-slate-950">P</div>
+          <div>
+            <p class="text-xs text-slate-400">Bem-vindo(a), <span id="dashboardUserName" class="font-bold text-white"></span></p>
+            <p id="dashboardUserEmail" class="text-[11px] text-slate-500"></p>
+          </div>
+        </div>
+        <button type="button" onclick="logoutUser()" class="rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800">Sair / Trocar Conta</button>
+      </header>
+      <div class="mb-7">
+        <h1 class="text-2xl font-extrabold text-white sm:text-3xl">Meus Shows &amp; Riders Técnicos</h1>
+        <p class="mt-2 text-sm text-slate-400">Seus projetos são privados desta conta neste navegador.</p>
+      </div>
+      <form id="newBandForm" onsubmit="createBand(event)" class="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6">
+        <h2 class="mb-4 text-sm font-bold uppercase tracking-wider text-amber-400">Cadastrar novo show / banda</h2>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div><label for="newBandName" class="mb-1 block text-xs text-slate-400">Nome da Banda / Artista</label><input id="newBandName" required maxlength="120" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" /></div>
+          <div><label for="newBandEvent" class="mb-1 block text-xs text-slate-400">Evento / Turnê</label><input id="newBandEvent" required maxlength="120" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" /></div>
+          <div><label for="newBandDate" class="mb-1 block text-xs text-slate-400">Data do Show</label><input id="newBandDate" type="date" required class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" /></div>
+          <div><label for="newBandTime" class="mb-1 block text-xs text-slate-400">Horário / Passagem de Som</label><input id="newBandTime" type="time" required class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" /></div>
+          <div><label for="newBandVenue" class="mb-1 block text-xs text-slate-400">Local / Cidade</label><input id="newBandVenue" required maxlength="160" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" /></div>
+          <div class="flex items-end"><button type="submit" class="w-full rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-extrabold text-slate-950 hover:bg-amber-400">Cadastrar e Adicionar à Lista</button></div>
+        </div>
+      </form>
+      <div class="mb-3 flex items-end justify-between gap-3">
+        <h2 class="text-lg font-bold text-white">Bandas &amp; Eventos</h2>
+        <span id="dashboardBandCount" class="text-xs text-slate-500"></span>
+      </div>
+      <div id="bandsList" class="grid gap-4 md:grid-cols-2"></div>
+      <p id="bandsEmptyState" class="hidden rounded-xl border border-dashed border-slate-700 py-10 text-center text-sm text-slate-500">Nenhum show cadastrado. Crie seu primeiro rider acima.</p>
+    </div>
+  </section>
+
+  <div id="view-editor" class="hidden flex-1 flex-col" data-html2canvas-ignore="true">
   <!-- TOPBAR -->
-  <header class="bg-slate-900/95 border-b border-slate-800 sticky top-0 z-40 backdrop-blur">
+  <header class="bg-slate-900/95 border-b border-slate-800 sticky top-0 z-40 backdrop-blur no-print" data-html2canvas-ignore="true">
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
+        <button type="button" onclick="returnToDashboard()" class="no-print rounded-lg border border-slate-700 px-2.5 py-2 text-xs font-bold text-slate-300 hover:bg-slate-800" data-html2canvas-ignore="true">← Minhas Bandas</button>
+        <button id="btnSaveChanges" type="button" onclick="saveBandChanges()" class="no-print rounded-lg bg-emerald-500 px-3 py-2 text-xs font-extrabold text-emerald-950 shadow-lg shadow-emerald-500/10 hover:bg-emerald-400 sm:order-last" data-html2canvas-ignore="true">💾 Salvar Alterações</button>
+      </div>
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-extrabold text-lg shadow-lg shadow-amber-500/20">
           P
@@ -230,29 +339,29 @@
         <div class="flex flex-wrap items-end gap-3">
           <div class="w-32">
             <label for="stageWidthM" class="block text-xs text-slate-400 mb-1">Largura do Palco (m)</label>
-            <input type="number" id="stageWidthM" min="3" max="40" step="0.5" value="8" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+            <input type="number" id="stageWidthM" min="3" max="40" step="0.5" value="8" required oninput="markPendingChanges(event)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
           </div>
           <div class="w-32">
             <label for="stageDepthM" class="block text-xs text-slate-400 mb-1">Profundidade do Palco (m)</label>
-            <input type="number" id="stageDepthM" min="2" max="30" step="0.5" value="6" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+            <input type="number" id="stageDepthM" min="2" max="30" step="0.5" value="6" required oninput="markPendingChanges(event)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
           </div>
           <div class="w-32">
             <label for="drumWidthM" class="block text-xs text-slate-400 mb-1">Largura da Bateria (m)</label>
-            <input type="number" id="drumWidthM" min="1.2" max="5" step="0.1" value="2" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+            <input type="number" id="drumWidthM" min="1.2" max="5" step="0.1" value="2" required oninput="markPendingChanges(event)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
           </div>
           <div class="w-32">
             <label for="drumDepthM" class="block text-xs text-slate-400 mb-1">Profundidade da Bateria (m)</label>
-            <input type="number" id="drumDepthM" min="1.2" max="5" step="0.1" value="2" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+            <input type="number" id="drumDepthM" min="1.2" max="5" step="0.1" value="2" required oninput="markPendingChanges(event)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
           </div>
           <div class="flex flex-wrap items-end gap-2 rounded-lg border border-slate-700 bg-slate-950/60 p-2">
             <span class="w-full text-[10px] font-bold uppercase tracking-wider text-slate-400">Tela (LED / Projeção)</span>
             <div class="w-28">
               <label for="screenWidthM" class="block text-xs text-slate-400 mb-1">Largura (m)</label>
-              <input type="number" id="screenWidthM" min="1" max="20" step="0.5" value="3.0" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+              <input type="number" id="screenWidthM" min="1" max="20" step="0.5" value="3.0" required oninput="markPendingChanges(event)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
             </div>
             <div class="w-28">
               <label for="screenDepthM" class="block text-xs text-slate-400 mb-1">Estrutura (m)</label>
-              <input type="number" id="screenDepthM" min="0.2" max="4" step="0.1" value="0.5" required class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
+              <input type="number" id="screenDepthM" min="0.2" max="4" step="0.1" value="0.5" required oninput="markPendingChanges(event)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white mono focus:border-amber-400 focus:outline-none" />
             </div>
             <button onclick="applyScreenDimensions()" class="px-3 py-2 text-xs font-bold rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition">Aplicar</button>
           </div>
@@ -474,9 +583,29 @@
       </div>
     </section>
   </main>
+  </div>
 
   <!-- ÁREA OCULTA PARA GERAÇÃO DO PDF LIMPO A4 -->
   <div id="pdf-container" class="hidden"></div>
+
+  <div id="googleFallbackModal" class="hidden fixed inset-0 z-[60] bg-slate-950/85 p-4 flex items-center justify-center no-print" role="dialog" aria-modal="true" aria-labelledby="googleFallbackTitle" data-html2canvas-ignore="true" onclick="if (event.target === this) closeGoogleFallback()">
+    <div class="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+      <div class="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 id="googleFallbackTitle" class="text-lg font-bold text-white">Acesso Google de demonstração</h2>
+          <p class="mt-1 text-xs leading-relaxed text-slate-400">Configure um Client ID GSI autorizado para autenticação Google. Para testar agora, vincule um perfil local.</p>
+        </div>
+        <button type="button" onclick="closeGoogleFallback()" class="text-slate-400 hover:text-white" aria-label="Fechar">✕</button>
+      </div>
+      <form onsubmit="handleGoogleFallback(event)" class="space-y-3">
+        <div><label for="googleFallbackName" class="mb-1 block text-xs text-slate-400">Nome</label><input id="googleFallbackName" required maxlength="100" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" /></div>
+        <div><label for="googleFallbackEmail" class="mb-1 block text-xs text-slate-400">E-mail para vincular</label><input id="googleFallbackEmail" type="email" required class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" /></div>
+        <button type="submit" class="w-full rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-400">Testar acesso com esta conta</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="appToast" class="pointer-events-none fixed bottom-4 left-1/2 z-[70] hidden -translate-x-1/2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl no-print" role="status" aria-live="polite" data-html2canvas-ignore="true"></div>
 
   <div id="installInstructions" class="hidden fixed inset-0 z-50 bg-slate-950/80 p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="installInstructionsTitle" onclick="if (event.target === this) closeInstallInstructions()">
     <div class="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
@@ -706,6 +835,12 @@
       screenDepthM: [0.2, 4, 0.1]
     };
     let selectedStageItemId = null;
+    let currentUser = null;
+    let currentBandId = null;
+    let isLoadingBand = false;
+    let hasPendingChanges = false;
+    let toastTimer = null;
+    const GOOGLE_CLIENT_ID = 'SEU_GOOGLE_CLIENT_ID_AQUI';
 
     const stageItemImages = {
       bateria: { src: 'img/bateria.png', label: 'Bateria' },
@@ -738,7 +873,7 @@
       teclado: 'keys', vocal: 'vocal', 'vs-click': 'vs'
     };
 
-    function normalizeStageItems(items) {
+    function normalizeStageItems(items, dimensions = state) {
       return (Array.isArray(items) ? items : []).map(item => {
         if (!item || typeof item !== 'object') return item;
         const oldType = String(item.type || '');
@@ -751,13 +886,13 @@
           stageItemAliases[oldType] &&
           legacyStageLabels[oldType]?.includes(displayLabel)
         ) || (type === 'screen' && label === 'Tela LED');
-        return { ...item, type, label: useDefaultLabel ? getDefaultStageItemLabel(type) : label };
+        return { ...item, type, label: useDefaultLabel ? getDefaultStageItemLabel(type, dimensions) : label };
       });
     }
 
-    function getDefaultStageItemLabel(type) {
+    function getDefaultStageItemLabel(type, dimensions = state) {
       if (type === 'screen') {
-        return `Tela LED (${state.screenWidthM.toFixed(1)}m x ${state.screenDepthM.toFixed(1)}m)`;
+        return `Tela LED (${dimensions.screenWidthM.toFixed(1)}m x ${dimensions.screenDepthM.toFixed(1)}m)`;
       }
       return stageItemImages[type]?.label || stageItemImages.di.label;
     }
@@ -846,29 +981,498 @@
       ]
     };
 
+    const defaultRiderState = JSON.parse(JSON.stringify(state));
+
     // INICIALIZAÇÃO
-    window.onload = () => {
-      const saved = localStorage.getItem('passagempro_v1');
-      if (saved) {
-        try { state = { ...state, ...JSON.parse(saved) }; } catch (e) {}
-      } else {
-        // Setup inicial de exemplo para não abrir vazio
-        addStageItem('bateria', 'Bateria', true, 50, 22);
-        addStageItem('baixo-amp', 'Baixo (Amp)', true, 24, 32);
-        addStageItem('guita-amp', 'Guitarra (Amp)', true, 76, 32);
-        addStageItem('teclado', 'Teclado', true, 82, 58);
-        addStageItem('vocal', 'Voz Lead', true, 50, 72);
-        addStageItem('monitor-l', 'Mon 1', false, 50, 84);
+    window.onload = initializeApp;
+
+    function showView(view) {
+      ['login', 'dashboard', 'editor'].forEach(name => {
+        const element = document.getElementById(`view-${name}`);
+        element.classList.toggle('hidden', name !== view);
+      });
+      if (view === 'dashboard') renderDashboard();
+    }
+
+    function initializeApp() {
+      showView(localStorage.getItem('passagempro_session') ? 'dashboard' : 'login');
+      const email = localStorage.getItem('passagempro_session');
+      if (email) {
+        currentUser = getUsers().find(user => user.email === email) || null;
+        if (currentUser) {
+          ensureLegacyRiderImported(currentUser);
+          updateDashboardProfile();
+          renderDashboard();
+        } else {
+          localStorage.removeItem('passagempro_session');
+          showView('login');
+        }
       }
+      configureGoogleSignIn();
+    }
+
+    function switchAuthTab(tab) {
+      const signup = tab === 'signup';
+      document.getElementById('loginForm').classList.toggle('hidden', signup);
+      document.getElementById('signupForm').classList.toggle('hidden', !signup);
+      document.getElementById('authTabLogin').className = signup
+        ? 'rounded-md px-3 py-2 text-sm font-bold text-slate-400'
+        : 'rounded-md bg-amber-500 px-3 py-2 text-sm font-bold text-slate-950';
+      document.getElementById('authTabSignup').className = signup
+        ? 'rounded-md bg-amber-500 px-3 py-2 text-sm font-bold text-slate-950'
+        : 'rounded-md px-3 py-2 text-sm font-bold text-slate-400';
+      document.getElementById('loginError').classList.add('hidden');
+      document.getElementById('signupError').classList.add('hidden');
+    }
+
+    function getUsers() {
+      try {
+        const users = JSON.parse(localStorage.getItem('passagempro_users') || '[]');
+        return Array.isArray(users) ? users : [];
+      } catch (error) {
+        showToast('Não foi possível ler as contas locais salvas.');
+        return [];
+      }
+    }
+
+    async function hashLocalPassword(password) {
+      if (window.crypto?.subtle && window.TextEncoder) {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+        return `sha256:${Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')}`;
+      }
+      let hash = 2166136261;
+      for (let index = 0; index < password.length; index++) {
+        hash ^= password.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      return `local:${(hash >>> 0).toString(16)}`;
+    }
+
+    function showAuthError(id, message) {
+      const element = document.getElementById(id);
+      element.textContent = message;
+      element.classList.remove('hidden');
+    }
+
+    async function handleLocalSignup(event) {
+      event.preventDefault();
+      const name = document.getElementById('signupName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+      const password = document.getElementById('signupPassword').value;
+      const users = getUsers();
+      if (users.some(user => user.email === email)) {
+        showAuthError('signupError', 'Já existe uma conta com este e-mail. Entre ou use outro e-mail.');
+        return;
+      }
+
+      try {
+        const user = { name, email, passwordHash: await hashLocalPassword(password), provider: 'local' };
+        users.push(user);
+        localStorage.setItem('passagempro_users', JSON.stringify(users));
+        startUserSession(user);
+      } catch (error) {
+        showAuthError('signupError', 'Não foi possível salvar a conta neste navegador.');
+      }
+    }
+
+    async function handleLocalLogin(event) {
+      event.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const password = document.getElementById('loginPassword').value;
+      const user = getUsers().find(candidate => candidate.email === email && candidate.passwordHash);
+      if (!user || user.passwordHash !== await hashLocalPassword(password)) {
+        showAuthError('loginError', 'E-mail ou senha inválidos.');
+        return;
+      }
+      startUserSession(user);
+    }
+
+    function startUserSession(user) {
+      try {
+        currentUser = user;
+        localStorage.setItem('passagempro_session', user.email);
+        ensureLegacyRiderImported(user);
+        updateDashboardProfile();
+        showView('dashboard');
+      } catch (error) {
+        currentUser = null;
+        showToast('Não foi possível iniciar a sessão local.');
+      }
+    }
+
+    function logoutUser() {
+      if (currentBandId) saveState();
+      localStorage.removeItem('passagempro_session');
+      currentUser = null;
+      currentBandId = null;
+      hasPendingChanges = false;
+      showView('login');
+    }
+
+    function getBandStorageKey(user = currentUser) {
+      return user ? `passagempro_bands_${user.email}` : null;
+    }
+
+    function getUserBands(user = currentUser) {
+      const key = getBandStorageKey(user);
+      if (!key) return [];
+      try {
+        const bands = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(bands) ? bands : [];
+      } catch (error) {
+        showToast('Não foi possível ler os riders desta conta.');
+        return [];
+      }
+    }
+
+    function saveUserBands(bands, user = currentUser) {
+      const key = getBandStorageKey(user);
+      if (!key) return false;
+      try {
+        localStorage.setItem(key, JSON.stringify(bands));
+        return true;
+      } catch (error) {
+        showToast('Não foi possível salvar. Verifique o espaço disponível no navegador.');
+        return false;
+      }
+    }
+
+    function cloneRider(rider = defaultRiderState) {
+      const cloned = JSON.parse(JSON.stringify(rider));
+      Object.assign(cloned, normalizeStageDimensions(cloned));
+      cloned.stageItems = normalizeStageItems(cloned.stageItems, cloned);
+      return cloned;
+    }
+
+    function createBandId() {
+      return window.crypto?.randomUUID
+        ? crypto.randomUUID()
+        : `band_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    function ensureLegacyRiderImported(user) {
+      if (getUserBands(user).length || localStorage.getItem('passagempro_legacy_migrated')) return;
+      const legacy = localStorage.getItem('passagempro_v1');
+      if (!legacy) return;
+      try {
+        const rider = { ...cloneRider(), ...JSON.parse(legacy) };
+        Object.assign(rider, normalizeStageDimensions(rider));
+        rider.stageItems = normalizeStageItems(rider.stageItems, rider);
+        const band = {
+          id: createBandId(),
+          name: rider.artistName || 'Meu Rider Importado',
+          event: rider.showFormat || 'Evento anterior',
+          date: '',
+          time: '',
+          venue: rider.eventInfo || '',
+          createdAt: new Date().toISOString(),
+          rider
+        };
+        if (saveUserBands([band], user)) {
+          localStorage.setItem('passagempro_legacy_migrated', 'true');
+          showToast('Seu rider anterior foi importado para esta conta.');
+        }
+      } catch (error) {
+        showToast('O rider antigo não pôde ser importado. O arquivo original foi mantido.');
+      }
+    }
+
+    function updateDashboardProfile() {
+      if (!currentUser) return;
+      document.getElementById('dashboardUserName').textContent = currentUser.name || 'Usuário';
+      document.getElementById('dashboardUserEmail').textContent = currentUser.email;
+      document.getElementById('dashboardUserInitial').textContent = (currentUser.name || currentUser.email).charAt(0).toUpperCase();
+      const picture = document.getElementById('dashboardUserPicture');
+      if (currentUser.picture) {
+        picture.src = currentUser.picture;
+        picture.classList.remove('hidden');
+        document.getElementById('dashboardUserInitial').classList.add('hidden');
+        picture.onerror = () => {
+          picture.classList.add('hidden');
+          document.getElementById('dashboardUserInitial').classList.remove('hidden');
+        };
+      } else {
+        picture.classList.add('hidden');
+        document.getElementById('dashboardUserInitial').classList.remove('hidden');
+      }
+    }
+
+    function formatShowDate(value) {
+      if (!value) return 'Data não informada';
+      const [year, month, day] = value.split('-');
+      return year && month && day ? `${day}/${month}/${year}` : value;
+    }
+
+    function renderDashboard() {
+      if (!currentUser) return;
+      updateDashboardProfile();
+      const bands = getUserBands();
+      const list = document.getElementById('bandsList');
+      list.innerHTML = '';
+      document.getElementById('dashboardBandCount').textContent = `${bands.length} show${bands.length === 1 ? '' : 's'}`;
+      document.getElementById('bandsEmptyState').classList.toggle('hidden', bands.length > 0);
+      bands.forEach(band => {
+        const card = document.createElement('article');
+        card.className = 'cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-amber-500/60 hover:bg-slate-900/80';
+        card.tabIndex = 0;
+        card.setAttribute('role', 'button');
+        card.setAttribute('aria-label', `Abrir rider de ${band.name || 'show'}`);
+        card.addEventListener('click', () => openBand(band.id));
+        card.addEventListener('keydown', event => {
+          if (event.target !== card) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openBand(band.id);
+          }
+        });
+        const heading = document.createElement('div');
+        heading.className = 'mb-2 flex items-start justify-between gap-3';
+        const title = document.createElement('h3');
+        title.className = 'text-lg font-extrabold text-white';
+        title.textContent = band.name || 'Banda sem nome';
+        const actions = document.createElement('div');
+        actions.className = 'flex shrink-0 gap-2';
+        const duplicate = document.createElement('button');
+        duplicate.type = 'button';
+        duplicate.className = 'rounded-md border border-slate-700 px-2 py-1 text-[11px] font-semibold text-slate-300 hover:bg-slate-800';
+        duplicate.textContent = 'Duplicar Rider';
+        duplicate.addEventListener('click', event => {
+          event.stopPropagation();
+          duplicateBand(band.id);
+        });
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'rounded-md border border-rose-900/70 px-2 py-1 text-[11px] font-semibold text-rose-300 hover:bg-rose-950';
+        remove.textContent = 'Excluir';
+        remove.addEventListener('click', event => {
+          event.stopPropagation();
+          deleteBand(band.id);
+        });
+        actions.append(duplicate, remove);
+        heading.append(title, actions);
+        const eventName = document.createElement('p');
+        eventName.className = 'text-sm font-semibold text-amber-300';
+        eventName.textContent = band.event || 'Evento não informado';
+        const details = document.createElement('p');
+        details.className = 'mt-3 text-xs leading-relaxed text-slate-400';
+        details.textContent = `${formatShowDate(band.date)} · ${band.time || 'Hora não informada'} · ${band.venue || 'Local não informado'}`;
+        const channels = document.createElement('p');
+        channels.className = 'mt-3 text-xs font-bold text-cyan-300';
+        channels.textContent = `${band.rider?.inputs?.length || 0} canais configurados`;
+        card.append(heading, eventName, details, channels);
+        list.appendChild(card);
+      });
+    }
+
+    function createBand(event) {
+      event.preventDefault();
+      if (!currentUser) return;
+      const name = document.getElementById('newBandName').value.trim();
+      const eventName = document.getElementById('newBandEvent').value.trim();
+      const date = document.getElementById('newBandDate').value;
+      const time = document.getElementById('newBandTime').value;
+      const venue = document.getElementById('newBandVenue').value.trim();
+      const rider = cloneRider();
+      rider.artistName = name;
+      rider.showFormat = eventName;
+      rider.eventInfo = [formatShowDate(date), time, venue].filter(Boolean).join(' • ');
+      const band = { id: createBandId(), name, event: eventName, date, time, venue, createdAt: new Date().toISOString(), rider };
+      const bands = getUserBands();
+      bands.unshift(band);
+      if (!saveUserBands(bands)) return;
+      event.target.reset();
+      openBand(band.id);
+    }
+
+    function openBand(id) {
+      if (!currentUser) return;
+      if (currentBandId) saveState();
+      const band = getUserBands().find(item => item.id === id);
+      if (!band) {
+        showToast('Este rider não foi encontrado.');
+        renderDashboard();
+        return;
+      }
+      currentBandId = band.id;
+      hasPendingChanges = false;
+      isLoadingBand = true;
+      state = { ...cloneRider(), ...(band.rider || {}) };
       Object.assign(state, normalizeStageDimensions(state));
-      state.stageItems = normalizeStageItems(state.stageItems);
+      state.stageItems = normalizeStageItems(state.stageItems, state);
       syncFormFromState();
       updateStageCanvasDimensions();
       renderStage();
       renderInputs();
       renderMonitors();
       calculatePA();
-    };
+      isLoadingBand = false;
+      setSaveButtonState();
+      showView('editor');
+    }
+
+    function duplicateBand(id) {
+      const bands = getUserBands();
+      const source = bands.find(band => band.id === id);
+      if (!source) return;
+      const duplicate = {
+        ...source,
+        id: createBandId(),
+        name: `${source.name || 'Banda'} (cópia)`,
+        createdAt: new Date().toISOString(),
+        rider: cloneRider(source.rider)
+      };
+      duplicate.rider.artistName = duplicate.name;
+      bands.unshift(duplicate);
+      if (saveUserBands(bands)) {
+        renderDashboard();
+        showToast('Rider duplicado.');
+      }
+    }
+
+    function deleteBand(id) {
+      if (!confirm('Excluir este show e seu rider? Esta ação não pode ser desfeita.')) return;
+      const bands = getUserBands().filter(band => band.id !== id);
+      if (saveUserBands(bands)) {
+        if (currentBandId === id) currentBandId = null;
+        renderDashboard();
+        showToast('Show excluído.');
+      }
+    }
+
+    function returnToDashboard() {
+      if (currentBandId) saveState();
+      showView('dashboard');
+    }
+
+    function setSaveButtonState(saved = false) {
+      const button = document.getElementById('btnSaveChanges');
+      if (!button) return;
+      button.textContent = saved ? '✓ Alterações Salvas!' : hasPendingChanges ? '💾 Salvar Alterações •' : '💾 Salvar Alterações';
+      button.classList.toggle('ring-2', hasPendingChanges && !saved);
+      button.classList.toggle('ring-amber-300', hasPendingChanges && !saved);
+    }
+
+    function saveBandChanges() {
+      const dimensionInputs = ['stageWidthM', 'stageDepthM', 'drumWidthM', 'drumDepthM', 'screenWidthM', 'screenDepthM']
+        .map(id => document.getElementById(id));
+      const invalidInput = dimensionInputs.find(input => !input.checkValidity());
+      if (invalidInput) {
+        invalidInput.reportValidity();
+        return;
+      }
+      const previousScreenLabel = getDefaultStageItemLabel('screen');
+      Object.assign(state, normalizeStageDimensions(Object.fromEntries(
+        dimensionInputs.map(input => [input.id, Number(input.value)])
+      )));
+      updateDefaultScreenLabels(previousScreenLabel);
+      updateStageCanvasDimensions();
+      renderStage();
+      saveState();
+      if (!currentUser || !currentBandId) {
+        showToast('Selecione um rider antes de salvar.');
+        return;
+      }
+      if (!persistActiveBand()) return;
+      hasPendingChanges = false;
+      setSaveButtonState(true);
+      showToast('Alterações do rider salvas.');
+      window.setTimeout(() => setSaveButtonState(false), 2000);
+    }
+
+    function persistActiveBand() {
+      if (!currentUser || !currentBandId) return false;
+      const bands = getUserBands();
+      const band = bands.find(item => item.id === currentBandId);
+      if (!band) return false;
+      band.name = state.artistName || '';
+      band.event = state.showFormat || '';
+      band.rider = JSON.parse(JSON.stringify(state));
+      return saveUserBands(bands);
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('appToast');
+      if (!toast) return;
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.add('hidden'), 2800);
+    }
+
+    function configureGoogleSignIn() {
+      const isConfigured = GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'SEU_GOOGLE_CLIENT_ID_AQUI';
+      if (!isConfigured || location.protocol === 'file:' || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredentialResponse
+      });
+    }
+
+    document.querySelector('script[src="https://accounts.google.com/gsi/client"]')
+      .addEventListener('load', configureGoogleSignIn, { once: true });
+
+    function startGoogleSignIn() {
+      const isConfigured = GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'SEU_GOOGLE_CLIENT_ID_AQUI';
+      if (isConfigured && location.protocol !== 'file:' && window.google?.accounts?.id) {
+        try {
+          window.google.accounts.id.prompt(notification => {
+            if (notification.isNotDisplayed?.() || notification.isSkippedMoment?.()) openGoogleFallback();
+          });
+          return;
+        } catch (error) {
+          openGoogleFallback();
+          return;
+        }
+      }
+      openGoogleFallback();
+    }
+
+    function openGoogleFallback() {
+      document.getElementById('googleFallbackModal').classList.remove('hidden');
+      document.getElementById('googleFallbackName').value = document.getElementById('signupName').value || '';
+      document.getElementById('googleFallbackEmail').value = document.getElementById('loginEmail').value || document.getElementById('signupEmail').value || '';
+    }
+
+    function closeGoogleFallback() {
+      document.getElementById('googleFallbackModal').classList.add('hidden');
+    }
+
+    function handleGoogleFallback(event) {
+      event.preventDefault();
+      const email = document.getElementById('googleFallbackEmail').value.trim().toLowerCase();
+      const name = document.getElementById('googleFallbackName').value.trim();
+      const user = upsertGoogleUser({ email, name, picture: '' });
+      closeGoogleFallback();
+      startUserSession(user);
+    }
+
+    function handleGoogleCredentialResponse(response) {
+      try {
+        const payloadPart = response.credential.split('.')[1];
+        const payload = JSON.parse(decodeURIComponent(escape(atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/')))));
+        if (!payload.email) throw new Error('Credencial sem e-mail.');
+        const user = upsertGoogleUser({ name: payload.name || payload.email, email: payload.email, picture: payload.picture || '' });
+        startUserSession(user);
+      } catch (error) {
+        showToast('Não foi possível validar a resposta de acesso do Google.');
+      }
+    }
+
+    function upsertGoogleUser(profile) {
+      const email = profile.email.trim().toLowerCase();
+      const users = getUsers();
+      let user = users.find(candidate => candidate.email === email);
+      if (user) {
+        user.name = profile.name || user.name;
+        user.picture = profile.picture || user.picture || '';
+        user.provider = user.provider || 'google';
+      } else {
+        user = { ...profile, email, provider: 'google' };
+        users.push(user);
+      }
+      localStorage.setItem('passagempro_users', JSON.stringify(users));
+      return user;
+    }
 
     function saveState() {
       state.artistName = document.getElementById('artistName').value;
@@ -879,7 +1483,23 @@
       state.acVoltage = document.getElementById('acVoltage').value;
       state.consoleReq = document.getElementById('consoleReq').value;
       state.stageNotes = document.getElementById('stageNotes').value;
-      localStorage.setItem('passagempro_v1', JSON.stringify(state));
+      if (isLoadingBand) return;
+      hasPendingChanges = true;
+      setSaveButtonState();
+      persistActiveBand();
+    }
+
+    function markPendingChanges(event) {
+      if (isLoadingBand) return;
+      hasPendingChanges = true;
+      setSaveButtonState();
+      const input = event?.target;
+      if (input && Object.prototype.hasOwnProperty.call(stageDimensionDefaults, input.id) && input.checkValidity()) {
+        const previousScreenLabel = getDefaultStageItemLabel('screen');
+        state[input.id] = Number(input.value);
+        updateDefaultScreenLabels(previousScreenLabel);
+        saveState();
+      }
     }
 
     function syncFormFromState() {
@@ -1369,7 +1989,7 @@
             throw new Error('Formato de projeto inválido');
           }
           state = { ...state, ...importedState, ...normalizeStageDimensions(importedState) };
-          state.stageItems = normalizeStageItems(state.stageItems);
+          state.stageItems = normalizeStageItems(state.stageItems, state);
           syncFormFromState();
           updateStageCanvasDimensions();
           renderStage();
@@ -1387,8 +2007,24 @@
 
     function resetAll() {
       if (!confirm('Deseja limpar todo o rider atual e começar do zero?')) return;
-      localStorage.removeItem('passagempro_v1');
-      location.reload();
+      const band = getUserBands().find(item => item.id === currentBandId);
+      if (!band) return;
+      state = cloneRider();
+      state.artistName = band.name || '';
+      state.showFormat = band.event || '';
+      state.eventInfo = [formatShowDate(band.date), band.time, band.venue].filter(Boolean).join(' • ');
+      isLoadingBand = true;
+      syncFormFromState();
+      updateStageCanvasDimensions();
+      renderStage();
+      renderInputs();
+      renderMonitors();
+      calculatePA();
+      isLoadingBand = false;
+      hasPendingChanges = true;
+      setSaveButtonState();
+      persistActiveBand();
+      showToast('Rider limpo. Salve as alterações para confirmar.');
     }
 
     // GERADOR DE PDF A4 EXECUTIVO (2 PÁGINAS LIMPAS)
