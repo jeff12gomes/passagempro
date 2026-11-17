@@ -111,6 +111,9 @@
         <button onclick="generatePDF()" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md shadow-amber-500/20 transition flex items-center gap-1.5">
           <span>⬇ Baixar Rider PDF (A4)</span>
         </button>
+        <button id="btnInstallApp" onclick="triggerInstallApp()" class="hidden px-3 py-1.5 text-xs font-semibold rounded-lg bg-cyan-950/80 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 border border-cyan-700/70 transition flex items-center gap-1.5" title="Instalar PassagemPro no computador ou celular">
+          <span>📲 Instalar App</span>
+        </button>
       </div>
     </div>
 
@@ -434,7 +437,193 @@
   <!-- ÁREA OCULTA PARA GERAÇÃO DO PDF LIMPO A4 -->
   <div id="pdf-container" class="hidden"></div>
 
+  <div id="installInstructions" class="hidden fixed inset-0 z-50 bg-slate-950/80 p-4 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="installInstructionsTitle" onclick="if (event.target === this) closeInstallInstructions()">
+    <div class="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 id="installInstructionsTitle" class="text-lg font-bold text-white">Instalar PassagemPro</h2>
+          <p id="installInstructionsText" class="mt-2 text-sm leading-relaxed text-slate-300"></p>
+        </div>
+        <button type="button" onclick="closeInstallInstructions()" class="rounded-lg px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Fechar instruções">✕</button>
+      </div>
+      <p class="mt-4 text-xs text-amber-300">A instalação requer hospedagem HTTPS. Para funcionar offline, o navegador exige um arquivo de Service Worker servido pelo mesmo domínio; ele não aceita registrá-lo diretamente de um Blob. Arquivos locais e alguns iframes também bloqueiam esses recursos.</p>
+    </div>
+  </div>
+
   <script>
+    let deferredInstallPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      const installButton = document.getElementById('btnInstallApp');
+      if (installButton) installButton.classList.remove('hidden');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      const installButton = document.getElementById('btnInstallApp');
+      if (installButton) installButton.classList.add('hidden');
+      closeInstallInstructions();
+    });
+
+    window.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeInstallInstructions();
+    });
+
+    async function triggerInstallApp() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        return;
+      }
+
+      const instructions = document.getElementById('installInstructionsText');
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      instructions.textContent = isIOS
+        ? 'No Safari, toque em Compartilhar e escolha “Adicionar à Tela de Início”.'
+        : 'No Chrome ou Edge, abra o menu ⋮ e escolha “Instalar PassagemPro” ou “Instalar este site como aplicativo”. No celular, use o menu do navegador e toque em “Instalar app” ou “Adicionar à tela inicial”.';
+      document.getElementById('installInstructions').classList.remove('hidden');
+    }
+
+    function closeInstallInstructions() {
+      document.getElementById('installInstructions').classList.add('hidden');
+    }
+
+    async function initializePWA() {
+      const isWebProtocol = window.location.protocol === 'https:' || window.location.protocol === 'http:';
+      if (!isWebProtocol) return;
+
+      const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+        <rect width="512" height="512" rx="96" fill="#0f172a"/>
+        <g fill="none" stroke="#f59e0b" stroke-linecap="round" stroke-width="16">
+          <path d="M75 186v42m34-70v98m34-120v142"/>
+          <path d="M369 184h70m-70 34h70m-70 34h70" opacity=".8"/>
+        </g>
+        <g fill="#0f172a" stroke="#f59e0b" stroke-width="8">
+          <circle cx="394" cy="184" r="13"/><circle cx="422" cy="218" r="13"/><circle cx="386" cy="252" r="13"/>
+        </g>
+        <path d="M184 111h92c69 0 111 38 111 101s-42 102-111 102h-39v86h-53V111zm53 48v107h36c37 0 59-19 59-54s-22-53-59-53h-36z" fill="#f59e0b"/>
+        <rect x="128" y="376" width="256" height="8" rx="4" fill="#f59e0b" opacity=".75"/>
+        <text x="256" y="455" fill="#f8fafc" font-family="Arial,sans-serif" font-size="44" font-weight="700" letter-spacing="8" text-anchor="middle">PRO</text>
+      </svg>`;
+
+      try {
+        const svgBlob = new Blob([iconSvg], { type: 'image/svg+xml' });
+        const svgUrl = URL.createObjectURL(svgBlob);
+        const image = new Image();
+        image.src = svgUrl;
+        await image.decode();
+
+        const iconData = {};
+        [192, 512].forEach(size => {
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          canvas.getContext('2d').drawImage(image, 0, 0, size, size);
+          iconData[size] = canvas.toDataURL('image/png');
+        });
+        URL.revokeObjectURL(svgUrl);
+
+        const manifest = {
+          name: 'PassagemPro — Rider Técnico & Alinhamento de PA',
+          short_name: 'PassagemPro',
+          start_url: window.location.href,
+          display: 'standalone',
+          background_color: '#020617',
+          theme_color: '#f59e0b',
+          icons: [192, 512].map(size => ({
+            src: iconData[size],
+            sizes: `${size}x${size}`,
+            type: 'image/png'
+          }))
+        };
+        const manifestUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }));
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = manifestUrl;
+        document.head.appendChild(manifestLink);
+
+        const appleIcon = document.createElement('link');
+        appleIcon.rel = 'apple-touch-icon';
+        appleIcon.href = iconData[192];
+        document.head.appendChild(appleIcon);
+
+        const installButton = document.getElementById('btnInstallApp');
+        if (installButton && !window.matchMedia('(display-mode: standalone)').matches && !navigator.standalone) {
+          installButton.classList.remove('hidden');
+        }
+
+        if ('serviceWorker' in navigator) {
+          const cacheName = 'passagempro-pwa-v1';
+          const pageUrl = window.location.href.split('#')[0];
+          const workerSource = `
+            const CACHE_NAME = ${JSON.stringify(cacheName)};
+            const PAGE_URL = ${JSON.stringify(pageUrl)};
+            const CDN_URLS = [
+              'https://cdn.tailwindcss.com',
+              'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
+            ];
+            self.addEventListener('install', event => {
+              event.waitUntil((async () => {
+                const cache = await caches.open(CACHE_NAME);
+                const urls = [PAGE_URL, ...CDN_URLS];
+                await Promise.allSettled(urls.map(async url => {
+                  const request = new Request(url, { mode: url.startsWith(self.location.origin) ? 'same-origin' : 'no-cors' });
+                  const response = await fetch(request);
+                  if (response.ok || response.type === 'opaque') await cache.put(request, response);
+                }));
+                await self.skipWaiting();
+              })());
+            });
+            self.addEventListener('activate', event => {
+              event.waitUntil((async () => {
+                const keys = await caches.keys();
+                await Promise.all(keys.filter(key => key.startsWith('passagempro-') && key !== CACHE_NAME).map(key => caches.delete(key)));
+                await self.clients.claim();
+              })());
+            });
+            self.addEventListener('fetch', event => {
+              if (event.request.method !== 'GET') return;
+              event.respondWith((async () => {
+                const cache = await caches.open(CACHE_NAME);
+                try {
+                  const response = await fetch(event.request);
+                  if (response.ok || response.type === 'opaque') {
+                    await cache.put(event.request, response.clone()).catch(() => {});
+                  }
+                  return response;
+                } catch (error) {
+                  const cached = await cache.match(event.request, { ignoreVary: true });
+                  if (cached) return cached;
+                  if (event.request.mode === 'navigate') {
+                    const cachedPage = await cache.match(PAGE_URL);
+                    if (cachedPage) return cachedPage;
+                  }
+                  throw error;
+                }
+              })());
+            });
+          `;
+
+          let workerUrl;
+          try {
+            workerUrl = URL.createObjectURL(new Blob([workerSource], { type: 'application/javascript' }));
+            await navigator.serviceWorker.register(workerUrl);
+          } catch (error) {
+            // Blob-based workers are rejected by browsers that require a same-origin script URL.
+          } finally {
+            if (workerUrl) URL.revokeObjectURL(workerUrl);
+          }
+        }
+      } catch (error) {
+        // PWA metadata is optional; the core single-file application remains usable if blocked.
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', initializePWA, { once: true });
+
     // ESTADO GLOBAL DA APLICAÇÃO
     let state = {
       artistName: '',
