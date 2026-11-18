@@ -48,6 +48,7 @@
       transition: filter 0.15s ease;
     }
     .stage-item:active { cursor: grabbing; z-index: 50; }
+    .stage-item.selected { z-index: 30 !important; }
     .stage-item-icon {
       display: block;
       overflow: visible;
@@ -77,11 +78,13 @@
     .stage-item-sub { top: calc(100% + 22px); }
     .stage-item-controls {
       position: absolute;
-      top: -9px;
-      right: -9px;
-      z-index: 20;
+      bottom: calc(100% + 5px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
       display: flex;
-      gap: 3px;
+      align-items: center;
+      gap: 4px;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.15s ease;
@@ -93,9 +96,10 @@
       pointer-events: auto;
     }
     .stage-item-control {
-      width: 23px;
-      height: 23px;
-      border: 1px solid #0f172a;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 5px;
+      border: 1px solid #334155;
       border-radius: 9999px;
       background: #ffffff;
       color: #0f172a;
@@ -104,6 +108,50 @@
       cursor: pointer;
     }
     .stage-item-control:hover { background: #e2e8f0; }
+    .stage-item-dimensions {
+      padding: 3px 6px;
+      border: 1px solid rgba(245, 158, 11, .6);
+      border-radius: 5px;
+      background: rgba(2, 6, 23, .95);
+      color: #fcd34d;
+      font: 500 10px 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+    .stage-item-selection-ring {
+      position: absolute;
+      inset: -3px;
+      z-index: 22;
+      border: 2px dashed #fbbf24;
+      border-radius: 6px;
+      pointer-events: none;
+      display: none;
+    }
+    .stage-item.selected .stage-item-selection-ring { display: block; }
+    .stage-item-resize-handle {
+      position: absolute;
+      right: -7px;
+      bottom: -7px;
+      z-index: 26;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #0f172a;
+      border-radius: 4px;
+      background: #22d3ee;
+      cursor: nwse-resize;
+      touch-action: none;
+      display: none;
+    }
+    .stage-item.selected .stage-item-resize-handle { display: block; }
+    .stage-item-resize-handle::after {
+      content: '';
+      position: absolute;
+      right: 2px;
+      bottom: 2px;
+      width: 7px;
+      height: 7px;
+      border-right: 1px solid #0f172a;
+      border-bottom: 1px solid #0f172a;
+    }
     /* Ocultar controles na exportação PDF */
     .pdf-mode .no-pdf { display: none !important; }
     .pdf-mode { background: #ffffff !important; color: #0f172a !important; }
@@ -874,6 +922,20 @@
     };
 
     function normalizeStageItems(items, dimensions = state) {
+      const total = {
+        width: Number(dimensions.stageWidthM) + 2 * STAGE_MARGIN_M,
+        depth: Number(dimensions.stageDepthM) + 2 * STAGE_MARGIN_M
+      };
+      const defaultSizeFor = type => {
+        if (type === 'bateria') return [Number(dimensions.drumWidthM), Number(dimensions.drumDepthM)];
+        if (type === 'screen') return [Number(dimensions.screenWidthM), Number(dimensions.screenDepthM)];
+        if (type === 'monitor-l' || type === 'monitor-r') return [0.65, 0.45];
+        if (type === 'baixo-amp' || type === 'baixo-linha' || type === 'guita-amp' || type === 'guita-linha' || type === 'violao') return [0.9, 0.7];
+        if (type === 'teclado') return [1.3, 0.6];
+        if (type === 'vocal') return [0.6, 0.6];
+        if (type === 'ac') return [0.35, 0.35];
+        return [0.6, 0.6];
+      };
       return (Array.isArray(items) ? items : []).map(item => {
         if (!item || typeof item !== 'object') return item;
         const oldType = String(item.type || '');
@@ -886,7 +948,26 @@
           stageItemAliases[oldType] &&
           legacyStageLabels[oldType]?.includes(displayLabel)
         ) || (type === 'screen' && label === 'Tela LED');
-        return { ...item, type, label: useDefaultLabel ? getDefaultStageItemLabel(type, dimensions) : label };
+        const [defaultWidth, defaultDepth] = defaultSizeFor(type);
+        const widthFromPercent = Number(item.widthPercent) * total.width / 100;
+        const depthFromPercent = Number(item.heightPercent) * total.depth / 100;
+        const widthM = Number.isFinite(Number(item.widthM)) && Number(item.widthM) > 0
+          ? Number(item.widthM)
+          : Number.isFinite(widthFromPercent) && widthFromPercent > 0 ? widthFromPercent : defaultWidth;
+        const depthM = Number.isFinite(Number(item.depthM)) && Number(item.depthM) > 0
+          ? Number(item.depthM)
+          : Number.isFinite(depthFromPercent) && depthFromPercent > 0 ? depthFromPercent : defaultDepth;
+        const safeWidthM = Math.max(0.35, Math.min(total.width, widthM));
+        const safeDepthM = Math.max(0.35, Math.min(total.depth, depthM));
+        return {
+          ...item,
+          type,
+          label: useDefaultLabel ? getDefaultStageItemLabel(type, dimensions) : label,
+          widthM: safeWidthM,
+          depthM: safeDepthM,
+          widthPercent: safeWidthM / total.width * 100,
+          heightPercent: safeDepthM / total.depth * 100
+        };
       });
     }
 
@@ -1294,6 +1375,7 @@
         return;
       }
       currentBandId = band.id;
+      selectedStageItemId = null;
       hasPendingChanges = false;
       isLoadingBand = true;
       state = { ...cloneRider(), ...(band.rider || {}) };
@@ -1562,6 +1644,7 @@
         inputs.map(input => [input.id, Number(input.value)])
       )));
       updateDefaultScreenLabels(previousScreenLabel);
+      updateStageItemPercentages();
       updateStageCanvasDimensions();
       renderStage();
       saveState();
@@ -1598,11 +1681,71 @@
       canvas.style.aspectRatio = `${total.width} / ${total.depth}`;
     }
 
+    function updateStageItemPercentages() {
+      const total = getTotalStageDimensions();
+      state.stageItems.forEach(item => {
+        item.widthM = Math.max(0.35, Math.min(total.width, Number(item.widthM) || 0.6));
+        item.depthM = Math.max(0.35, Math.min(total.depth, Number(item.depthM) || 0.6));
+        item.widthPercent = item.widthM / total.width * 100;
+        item.heightPercent = item.depthM / total.depth * 100;
+        clampStageItemPosition(item);
+      });
+    }
+
+    function clampStageItemPosition(item) {
+      const total = getTotalStageDimensions();
+      const halfWidthPercent = (Number(item.widthM) / total.width * 100) / 2;
+      const halfDepthPercent = (Number(item.depthM) / total.depth * 100) / 2;
+      const x = Number(item.x);
+      const y = Number(item.y);
+      item.x = Math.max(halfWidthPercent, Math.min(100 - halfWidthPercent, Number.isFinite(x) ? x : 50));
+      item.y = Math.max(halfDepthPercent, Math.min(100 - halfDepthPercent, Number.isFinite(y) ? y : 50));
+    }
+
+    function setStageItemSize(item, widthM, depthM) {
+      const total = getTotalStageDimensions();
+      item.widthM = Math.round(Math.max(0.35, Math.min(total.width, widthM)) * 100) / 100;
+      item.depthM = Math.round(Math.max(0.35, Math.min(total.depth, depthM)) * 100) / 100;
+      item.widthPercent = item.widthM / total.width * 100;
+      item.heightPercent = item.depthM / total.depth * 100;
+      clampStageItemPosition(item);
+    }
+
+    function formatStageItemDimensions(item) {
+      return `${Number(item.widthM).toFixed(2).replace('.', ',')}m × ${Number(item.depthM).toFixed(2).replace('.', ',')}m`;
+    }
+
+    function selectStageItem(id, element) {
+      selectedStageItemId = id;
+      document.querySelectorAll('#stageCanvas .stage-item').forEach(itemElement => {
+        itemElement.classList.toggle('selected', itemElement === element);
+      });
+    }
+
+    function clearStageSelection() {
+      selectedStageItemId = null;
+      document.querySelectorAll('#stageCanvas .stage-item.selected').forEach(itemElement => {
+        itemElement.classList.remove('selected');
+      });
+    }
+
+    function adjustStageItemSize(id, increment, event) {
+      event?.stopPropagation();
+      const item = state.stageItems.find(stageItem => stageItem.id === id);
+      if (!item) return;
+      setStageItemSize(item, Number(item.widthM) + increment, Number(item.depthM) + increment);
+      renderStage();
+      saveState();
+    }
+
     function addStageItem(type, label, populateInputs, xPct = null, yPct = null) {
       const id = 'item_' + Date.now() + Math.random().toString(36).slice(2, 6);
       const x = xPct !== null ? xPct : 30 + Math.floor(Math.random() * 40);
       const y = yPct !== null ? yPct : 30 + Math.floor(Math.random() * 40);
-      state.stageItems.push({ id, type, label: type === 'screen' && label === 'Tela LED' ? getDefaultStageItemLabel(type) : label, x, y });
+      const newItem = normalizeStageItems([{
+        id, type, label: type === 'screen' && label === 'Tela LED' ? getDefaultStageItemLabel(type) : label, x, y
+      }], state)[0];
+      state.stageItems.push(newItem);
 
       const presetType = stageItemPresetTypes[type];
       if (populateInputs && presetType && instrumentPresets[presetType]) {
@@ -1628,10 +1771,7 @@
       const canvas = document.getElementById('stageCanvas');
       canvas.innerHTML = '';
       canvas.onpointerdown = (event) => {
-        if (event.target === canvas && selectedStageItemId) {
-          canvas.querySelectorAll('.stage-item.selected').forEach(el => el.classList.remove('selected'));
-          selectedStageItemId = null;
-        }
+        if (!event.target.closest('.stage-item')) clearStageSelection();
       };
       const total = getTotalStageDimensions();
       const floor = document.createElement('div');
@@ -1668,20 +1808,23 @@
 
       let screenIndex = 0;
       state.stageItems.forEach(item => {
+        if (!Number.isFinite(Number(item.widthM)) || !Number.isFinite(Number(item.depthM))) {
+          Object.assign(item, normalizeStageItems([item], state)[0]);
+        }
+        item.widthPercent = Number(item.widthM) / total.width * 100;
+        item.heightPercent = Number(item.depthM) / total.depth * 100;
+        clampStageItemPosition(item);
         const el = document.createElement('div');
         el.className = `stage-item absolute -translate-x-1/2 -translate-y-1/2 cursor-grab${selectedStageItemId === item.id ? ' selected' : ''}`;
         el.style.left = item.x + '%';
         el.style.top = item.y + '%';
-        if (item.type === 'bateria') {
-          el.style.width = `${(state.drumWidthM / total.width) * 100}%`;
-          el.style.height = `${(state.drumDepthM / total.depth) * 100}%`;
-        } else if (item.type === 'screen') {
-          el.style.width = `${(state.screenWidthM / total.width) * 100}%`;
-          el.style.height = `${(state.screenDepthM / total.depth) * 100}%`;
-        } else {
-          el.style.width = '108px';
-          el.style.height = '76px';
-        }
+        el.style.width = `${item.widthPercent}%`;
+        el.style.height = `${item.heightPercent}%`;
+
+        const selectionRing = document.createElement('div');
+        selectionRing.className = 'stage-item-selection-ring no-print';
+        selectionRing.setAttribute('data-html2canvas-ignore', 'true');
+        el.appendChild(selectionRing);
 
         const icon = document.createElement('div');
         icon.className = `stage-item-icon w-full h-full${item.type === 'bateria' ? ' drum' : ''}`;
@@ -1717,11 +1860,33 @@
         el.appendChild(sub);
 
         const controls = document.createElement('div');
-        controls.className = 'stage-item-controls no-pdf';
+        controls.className = 'stage-item-controls no-pdf no-print';
+        controls.setAttribute('data-html2canvas-ignore', 'true');
+        const dimensions = document.createElement('span');
+        dimensions.className = 'stage-item-dimensions';
+        dimensions.textContent = formatStageItemDimensions(item);
+        dimensions.setAttribute('aria-live', 'polite');
+        controls.appendChild(dimensions);
+        const shrinkButton = document.createElement('button');
+        shrinkButton.type = 'button';
+        shrinkButton.className = 'stage-item-control';
+        shrinkButton.textContent = '−';
+        shrinkButton.title = 'Diminuir 0,10m';
+        shrinkButton.setAttribute('aria-label', 'Diminuir o item em 0,10m');
+        shrinkButton.addEventListener('click', event => adjustStageItemSize(item.id, -0.1, event));
+        controls.appendChild(shrinkButton);
+        const growButton = document.createElement('button');
+        growButton.type = 'button';
+        growButton.className = 'stage-item-control';
+        growButton.textContent = '+';
+        growButton.title = 'Aumentar 0,10m';
+        growButton.setAttribute('aria-label', 'Aumentar o item em 0,10m');
+        growButton.addEventListener('click', event => adjustStageItemSize(item.id, 0.1, event));
+        controls.appendChild(growButton);
         const rotateButton = document.createElement('button');
         rotateButton.type = 'button';
         rotateButton.className = 'stage-item-control';
-        rotateButton.textContent = '↻45°';
+        rotateButton.textContent = '↻';
         rotateButton.title = 'Girar +45 graus';
         rotateButton.setAttribute('aria-label', 'Girar item 45 graus');
         rotateButton.addEventListener('click', event => rotateStageItem(item.id, event));
@@ -1729,30 +1894,71 @@
         const removeButton = document.createElement('button');
         removeButton.type = 'button';
         removeButton.className = 'stage-item-control';
-        removeButton.textContent = 'X';
+        removeButton.textContent = '×';
         removeButton.title = 'Excluir item';
         removeButton.setAttribute('aria-label', 'Excluir item');
         removeButton.addEventListener('click', event => removeStageItem(item.id, event));
         controls.appendChild(removeButton);
         el.appendChild(controls);
 
+        const resizeHandle = document.createElement('button');
+        resizeHandle.type = 'button';
+        resizeHandle.className = 'stage-item-resize-handle no-print';
+        resizeHandle.setAttribute('data-html2canvas-ignore', 'true');
+        resizeHandle.title = 'Redimensionar item';
+        resizeHandle.setAttribute('aria-label', 'Redimensionar item');
+        resizeHandle.addEventListener('pointerdown', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          selectStageItem(item.id, el);
+          resizeHandle.setPointerCapture(event.pointerId);
+          const startX = event.clientX;
+          const startY = event.clientY;
+          const startWidthM = Number(item.widthM);
+          const startDepthM = Number(item.depthM);
+          const rect = canvas.getBoundingClientRect();
+          const onMove = moveEvent => {
+            setStageItemSize(
+              item,
+              startWidthM + ((moveEvent.clientX - startX) / rect.width) * total.width,
+              startDepthM + ((moveEvent.clientY - startY) / rect.height) * total.depth
+            );
+            el.style.width = `${item.widthPercent}%`;
+            el.style.height = `${item.heightPercent}%`;
+            el.style.left = `${item.x}%`;
+            el.style.top = `${item.y}%`;
+            dimensions.textContent = formatStageItemDimensions(item);
+          };
+          const onEnd = () => {
+            resizeHandle.removeEventListener('pointermove', onMove);
+            resizeHandle.removeEventListener('pointerup', onEnd);
+            resizeHandle.removeEventListener('pointercancel', onEnd);
+            saveState();
+          };
+          resizeHandle.addEventListener('pointermove', onMove);
+          resizeHandle.addEventListener('pointerup', onEnd);
+          resizeHandle.addEventListener('pointercancel', onEnd);
+        });
+        el.appendChild(resizeHandle);
+
         // Drag com Pointer Events (Mouse + Touch)
         el.addEventListener('pointerdown', (e) => {
+          selectStageItem(item.id, el);
           if (e.target.closest('input, button')) return;
-          canvas.querySelectorAll('.stage-item.selected').forEach(selected => selected.classList.remove('selected'));
-          selectedStageItemId = item.id;
-          el.classList.add('selected');
           el.setPointerCapture(e.pointerId);
           const rect = canvas.getBoundingClientRect();
           const onMove = (ev) => {
             let nx = ((ev.clientX - rect.left) / rect.width) * 100;
             let ny = ((ev.clientY - rect.top) / rect.height) * 100;
-            nx = Math.max(1, Math.min(99, nx));
-            ny = Math.max(1, Math.min(99, ny));
+            const halfWidthPercent = item.widthPercent / 2;
+            const halfDepthPercent = item.heightPercent / 2;
+            nx = Math.max(halfWidthPercent, Math.min(100 - halfWidthPercent, nx));
+            ny = Math.max(halfDepthPercent, Math.min(100 - halfDepthPercent, ny));
             item.x = Math.round(nx * 10) / 10;
             item.y = Math.round(ny * 10) / 10;
             el.style.left = item.x + '%';
             el.style.top = item.y + '%';
+            dimensions.textContent = formatStageItemDimensions(item);
           };
           const onUp = () => {
             el.removeEventListener('pointermove', onMove);
@@ -1768,6 +1974,10 @@
         canvas.appendChild(el);
       });
     }
+
+    window.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && selectedStageItemId) clearStageSelection();
+    });
 
     function updateStageLabel(id, val) {
       const item = state.stageItems.find(i => i.id === id);
@@ -1989,6 +2199,7 @@
             throw new Error('Formato de projeto inválido');
           }
           state = { ...state, ...importedState, ...normalizeStageDimensions(importedState) };
+          selectedStageItemId = null;
           state.stageItems = normalizeStageItems(state.stageItems, state);
           syncFormFromState();
           updateStageCanvasDimensions();
@@ -2010,6 +2221,7 @@
       const band = getUserBands().find(item => item.id === currentBandId);
       if (!band) return;
       state = cloneRider();
+      selectedStageItemId = null;
       state.artistName = band.name || '';
       state.showFormat = band.event || '';
       state.eventInfo = [formatShowDate(band.date), band.time, band.venue].filter(Boolean).join(' • ');
@@ -2040,12 +2252,8 @@
       const stageItemsHTML = state.stageItems.map((item, index) => {
         const isDrums = item.type === 'bateria';
         const isScreen = item.type === 'screen';
-        const itemWidth = isDrums
-          ? `${(state.drumWidthM / total.width) * 100}%`
-          : isScreen ? `${(state.screenWidthM / total.width) * 100}%` : '82px';
-        const itemHeight = isDrums
-          ? `${(state.drumDepthM / total.depth) * 100}%`
-          : isScreen ? `${(state.screenDepthM / total.depth) * 100}%` : '68px';
+        const itemWidth = `${(Number(item.widthM) / total.width) * 100}%`;
+        const itemHeight = `${(Number(item.depthM) / total.depth) * 100}%`;
         const imagePath = stageItemImages[item.type]?.src || stageItemImages.di.src;
         const drumBorder = isDrums ? 'border:1px dashed #475569; box-sizing:border-box;' : '';
         const itemDrawing = isScreen
